@@ -1,62 +1,64 @@
-import numpy as np
 import pandas as pd
-from prefect import task, flow
+import numpy as np
+from prefect import flow, task
 
-# Data from Pipeline Question 1
-arr = np.array([12.0, 15.0, np.nan, 14.0, 10.0, np.nan, 18.0, 14.0, 16.0, 22.0, np.nan, 13.0])
+# --- Prefect Pipeline Question 2 ---
 
-@task(name="Create Series")
+@task
 def create_series(arr):
-    """Converts NumPy array to a pandas Series named 'values'."""
+    """Takes a NumPy array and returns a pandas Series named 'values'."""
     return pd.Series(arr, name="values")
 
-@task(name="Clean Data")
+@task
 def clean_data(series):
-    """Removes NaN values from the Series."""
+    """Removes any NaN values using .dropna()."""
     return series.dropna()
 
-@task(name="Summarize Data")
+@task
 def summarize_data(series):
-    # Avoid adding complex type hints like ': pd.Series' for now
+    """Returns a dictionary with mean, median, std, and mode."""
     return {
-        "mean": float(series.mean()),
-        "median": float(series.median()),
-        "std": float(series.std()),
-        "mode": float(series.mode()[0]) # Get single value as per Q1 instructions
+        "mean": series.mean(),
+        "median": series.median(),
+        "std": series.std(),
+        "mode": series.mode()[0]
     }
 
-@flow(name="Data Processing Pipeline")
+@flow(name="Warmup Summary Flow")
 def pipeline_flow(arr):
-    """Prefect Flow orchestrating the data tasks."""
-    s = create_series(arr)
-    cleaned = clean_data(s)
-    results = summarize_data(cleaned)
-    
-    # Print results inside the flow for visibility
-    print("\n--- Prefect Pipeline Results ---")
-    for key, value in results.items():
-        print(f"{key.capitalize()}: {value:.2f}")
-    
-    return results
+    """Orchestrates the three functions as a Prefect flow."""
+    series = create_series(arr)
+    cleaned = clean_data(series)
+    summary = summarize_data(cleaned)
+    return summary
 
 if __name__ == "__main__":
+    # Input data from Q1
+    arr = np.array([12.0, 15.0, np.nan, 14.0, 10.0, np.nan, 18.0, 14.0, 16.0, 22.0, np.nan, 13.0])
+    
     # Execute the flow
-    pipeline_flow(arr)
+    results = pipeline_flow(arr)
+    
+    # Print results to confirm they match Q1
+    print("\nFlow Results:")
+    for key, val in results.items():
+        print(f"{key}: {val:.2f}")
 
-# ===== Reflection Questions =====
 """
-1. Why might Prefect be more overhead than it is worth here?
-Prefect adds significant boilerplate (decorators, environment setup, and tracking logic) 
-for a process that runs in milliseconds on a local machine. For a simple script with 
-no external dependencies or long-running steps, plain Python is faster to write 
-and easier to debug without the added layer of an orchestration engine.
+--- Reflection ---
 
-2. Describe scenarios where Prefect is useful, even for simple logic:
-- Scheduling: If this simple pipeline needed to run every Monday at 8:00 AM automatically.
-- Retries: If the 'create_series' step involved fetching data from a flaky API that 
-  fails 10% of the time, Prefect can automatically retry it.
-- Observability: If we needed a dashboard (Prefect Cloud) to see exactly when the 
-  pipeline ran, if it succeeded, and how long each step took.
-- Notifications: Sending a Slack or email alert immediately if the 'clean_data' 
-  step fails due to unexpected data types.
+1. Why might Prefect be more overhead than it is worth here?
+For a simple script with a small, static array, Prefect adds latency due to the orchestration 
+engine (initializing the flow, tracking task states, and logging). The "home-grown" Python 
+functions execute in microseconds, whereas Prefect adds a few seconds of setup time. It also 
+requires the installation of an external library for logic that can be handled by standard Python.
+
+2. Realistic scenarios where Prefect is useful even for simple logic:
+- Scheduling: If this simple logic needs to run every Monday at 8:00 AM automatically.
+- Observability/Alerting: If the pipeline fails (e.g., the data source is missing), Prefect 
+  can send a Slack or Email notification without manual checking.
+- Retries: If the 'data' comes from a flaky API, Prefect can automatically retry the task 
+  3 times before failing.
+- Infrastructure: If the simple logic needs to run inside a specific Docker container or 
+  on a cloud worker, Prefect manages that environment deployment.
 """
