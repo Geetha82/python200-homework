@@ -208,38 +208,55 @@ def run_hypothesis_tests(df):
 @task
 def correlation_multiple_comparisons(df):
     logger = get_run_logger()
-    target = "happiness_score" # Or "ladder_score" depending on your naming
+    target = "happiness_score"  # Or "ladder_score"
     
-    # 1. Identify explanatory variables (numeric columns minus target and year)
+    # 1. Identify explanatory variables
     exclude = [target, 'year', 'ranking']
     features = [col for col in df.select_dtypes(include=['number']).columns if col not in exclude]
     
     # 2. Setup thresholds
-    alpha = 0.05
+    alpha_original = 0.05
     num_tests = len(features)
-    adjusted_alpha = alpha / num_tests
+    adjusted_alpha = alpha_original / num_tests
     
     logger.info(f"--- Task 5: Correlation Analysis (N={num_tests}) ---")
-    logger.info(f"Original Alpha: {alpha} | Bonferroni Adjusted Alpha: {adjusted_alpha:.4f}")
-
+    logger.info(f"Original Alpha: {alpha_original} | Bonferroni Adjusted Alpha: {adjusted_alpha:.4f}")
+    
     results = []
     for f in features:
-        # Create a temporary subset and remove any rows with missing values
         subset = df[[f, target]].dropna()
         
-        # Ensure we have enough data points to run a correlation
         if len(subset) > 2:
             coeff, p_val = stats.pearsonr(subset[f], subset[target])
             
-            # Logic for adjusted alpha (Task 5 requirement)
+            # --- New Logic for Explicit Logging ---
+            is_sig_original = p_val < alpha_original
             is_sig_adj = p_val < adjusted_alpha
             
-            logger.info(f"Feature: {f:25} | r: {coeff:.3f} | p: {p_val:.2e}")
-            results.append({'feature': f, 'r': coeff, 'sig_adj': is_sig_adj})
+            # Updated Logger: explicitly flag both criteria
+            logger.info(f"Feature: {f:25}")
+            logger.info(f"  - r: {coeff:.3f} | p: {p_val:.2e}")
+            logger.info(f"  - Significant at 0.05: {is_sig_original}")
+            logger.info(f"  - Survives Bonferroni: {is_sig_adj}")
+            
+            results.append({
+                'feature': f, 
+                'r': coeff, 
+                'sig_orig': is_sig_original,
+                'sig_adj': is_sig_adj
+            })
 
     # Find strongest significant predictor that survived the correction
     sig_only = [res for res in results if res['sig_adj']]
-    return max(sig_only, key=lambda x: abs(x['r'])) if sig_only else {"feature": "None", "r": 0}
+    
+    if sig_only:
+        strongest = max(sig_only, key=lambda x: abs(x['r']))
+        logger.info(f"Strongest Robust Predictor: {strongest['feature']} (r={strongest['r']:.3f})")
+        return strongest
+    else:
+        logger.info("No features survived the Bonferroni correction.")
+        return {"feature": "None", "r": 0}
+
 
 # ===== Task 6: Summary Report Implementation =====
 @task

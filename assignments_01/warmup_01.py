@@ -300,7 +300,7 @@ group_a = [55, 60, 63, 70, 68, 62, 58, 65]
 group_b = [75, 80, 78, 90, 85, 79, 82, 88]
 
 # Create the side-by-side boxplot
-plt.boxplot([group_a, group_b], label=["Group A", "Group B"])
+plt.boxplot([group_a, group_b], tick_labels =["Group A", "Group B"])
 
 # Add required metadata
 plt.title("Score Comparison")
@@ -320,7 +320,7 @@ normal_data = np.random.normal(50, 5, 200)
 skewed_data = np.random.exponential(10, 200)
 
 # Create the side-by-side boxplot
-plt.boxplot([normal_data, skewed_data], label=["Normal", "Exponential"])
+plt.boxplot([normal_data, skewed_data], tick_labels= ["Normal", "Exponential"])
 
 # Add metadata
 plt.title("Distribution Comparison")
