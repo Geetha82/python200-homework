@@ -26,6 +26,13 @@ def load_all_happiness_data(base_url, years):
         
         # Standardize column names
         df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
+
+        rename_map = {
+            'ladder_score': 'happiness_score',
+            'logged_gdp_per_capita': 'gdp_per_capita',
+            'country_name': 'country'
+        }
+        df = df.rename(columns=rename_map)
         
         # Add year column (Requirement)
         df["year"] = int(year)
