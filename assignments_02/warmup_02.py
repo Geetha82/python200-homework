@@ -45,36 +45,111 @@ print(f"Reshaped 2D shape: {X_2d.shape}")
 
 
 # ===== scikit-learn Question 3 =====
-# 1. Generate Dataset
+import os
+import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.cluster import KMeans
+from sklearn.datasets import make_blobs
+from sklearn.linear_model import LinearRegression
+
+# Ensure the outputs directory exists before saving files
+os.makedirs("outputs", exist_ok=True)
+
+# ==========================================
+# --- scikit-learn API ---
+# ==========================================
+
+# --- Q1 ---
+print("--- Question 1 ---")
+years = np.array([1, 2, 3, 5, 7, 10]).reshape(-1, 1)
+salary = np.array([45000, 50000, 60000, 75000, 90000, 120000])
+
+# Create and fit model
+model = LinearRegression()
+model.fit(years, salary)
+
+# Predict for 4 and 8 years of experience
+test_years = np.array([4, 8]).reshape(-1, 1)
+predictions = model.predict(test_years)
+
+# Print labeled metrics
+print(f"Model Slope (coef_): {model.coef_[0]:.2f}")
+print(f"Model Intercept: {model.intercept_:.2f}")
+print(f"Predicted Salary for 4 years experience: ${predictions[0]:.2f}")
+print(f"Predicted Salary for 8 years experience: ${predictions[1]:.2f}")
+print()
+
+
+# --- Q2 ---
+print("--- Question 2 ---")
+x = np.array([10, 20, 30, 40, 50])
+print(f"Original 1D shape: {x.shape}")
+
+x_2d = x.reshape(-1, 1)
+print(f"Reshaped 2D shape: {x_2d.shape}")
+
+# COMMENT EXPLAINING 2D REQUIREMENT:
+# Scikit-learn expects X to be a 2D matrix because machine learning datasets
+# typically contain multiple samples (rows) and multiple features (columns).
+# Even when working with a single feature, keeping a 2D format ensures consistency
+# across the entire API, allowing functions to always treat columns as individual features.
+print()
+
+
+# --- Q3 ---
+print("--- Question 3 ---")
+# Generate synthetic dataset
 X_clusters, _ = make_blobs(
     n_samples=120, centers=3, cluster_std=0.8, random_state=7
 )
 
-# 2. Create, Fit, and Predict
+# Create, fit, and predict labels
 kmeans = KMeans(n_clusters=3, random_state=42)
 labels = kmeans.fit_predict(X_clusters)
 
-# 3.Print the cluster centers 
-print("\n===== scikit-learn Question 3 Results  =====")
-print("Cluster Centers:\n", kmeans.cluster_centers_)
-print("Points per cluster:", np.bincount(labels))
+# Get metrics
+centers = kmeans.cluster_centers_
+counts = np.bincount(labels)
 
-# 4. Plot and Save
-os.makedirs("outputs", exist_ok=True)
-plt.figure()
-plt.scatter(X_clusters[:, 0], X_clusters[:, 1], c=labels)
+# Print results
+print("Cluster Centers:\n", centers)
+print(f"Points per cluster (Cluster 0, 1, 2): {counts}")
+
+# Plotting the results
+plt.figure(figsize=(8, 6))
+
+# Scatter plot colored by cluster label
 plt.scatter(
-    kmeans.cluster_centers_[:, 0],
-    kmeans.cluster_centers_[:, 1],
-    color="black",
-    marker="x",
-    s=100,
+    X_clusters[:, 0],
+    X_clusters[:, 1],
+    c=labels,
+    cmap="viridis",
+    alpha=0.6,
+    edgecolors="k",
 )
-plt.title("K-Means Clusters")
-plt.xlabel("X1")
-plt.ylabel("X2")
-plt.savefig("outputs/kmeans_clusters.png")
+
+# Plot cluster centers as black X's
+plt.scatter(
+    centers[:, 0],
+    centers[:, 1],
+    c="black",
+    marker="x",
+    s=200,
+    linewidths=3,
+    label="Centers",
+)
+
+plt.title("K-Means Clustering Result")
+plt.xlabel("Feature 1")
+plt.ylabel("Feature 2")
+plt.legend()
+
+# Save the figure
+output_path = "outputs/kmeans_clusters.png"
+plt.savefig(output_path)
 plt.close()
+
+print(f"\nPlot successfully saved to: {output_path}")
 
 
 # --- Linear Regression ---
