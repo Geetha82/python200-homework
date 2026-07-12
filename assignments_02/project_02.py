@@ -11,39 +11,37 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 
-# Ensure outputs directory exists
-os.makedirs("outputs", exist_ok=True)
-
-
 # --- Task 1: Load and Explore ---
 
-# 1. Load the dataset with the correct separator
-df = pd.read_csv("student_performance_math.csv", sep=";")
+# Observation: The raw CSV file uses semicolons (';') as delimiters 
+# rather than standard commas, so the sep=';' parameter is required.
+
+# 1. Load the dataset
+df = pd.read_csv('assignments_02/student_performance_math.csv', sep=';')
 
 print("\n===== Task 1: Load and Explore  =====")
-
-# 2. Print the basic dataset details
-print("--- Dataset Shape ---")
-print(df.shape)
-
-print("\n--- First 5 Rows ---")
-print(df.head(5))
-
-print("\n--- Column Data Types ---")
+# 2. Explore the dataset structure
+print("Dataset Shape:", df.shape)
+print("\nFirst Five Rows:")
+print(df.head())
+print("\nData Types:")
 print(df.dtypes)
 
-# 3. Create the histogram plot
-plt.figure(figsize=(8, 6))
-plt.hist(df["G3"], bins=21, range=(0, 20), color="skyblue", edgecolor="black")
+# 3. Create the outputs directory if it doesn't exist
+os.makedirs('assignments_02/outputs', exist_ok=True)
 
-# 4. Add details and labels to the plot
+# 4. Plot the histogram of G3 (including the zeros)
+plt.figure(figsize=(8, 5))
+plt.hist(df['G3'], bins=21, range=(0, 20), edgecolor='black', color='skyblue')
+
+# 5. Customize and save the plot
 plt.title("Distribution of Final Math Grades")
 plt.xlabel("Final Grade (G3)")
 plt.ylabel("Number of Students")
-plt.grid(axis="y", linestyle="--", alpha=0.5)
+plt.grid(axis='y', alpha=0.75)
 
-# 5. Save the plot to the outputs folder
-plt.savefig("outputs/g3_distribution.png")
+# Save the plot to the specified directory
+plt.savefig('assignments_02/outputs/g3_distribution.png', dpi=300)
 plt.close()
 
 print("\nHistogram successfully saved to outputs/g3_distribution.png")
@@ -132,7 +130,7 @@ plt.xticks(average_by_failure.index) # Show exact numbers on x-axis
 plt.grid(axis="y", linestyle="--", alpha=0.5)
 
 # Save the first plot
-plt.savefig("outputs/g3_by_failures_bar.png")
+plt.savefig("assignments_02/outputs/g3_by_failures_bar.png")
 plt.close()
 
 # Plot 1 Comment:
@@ -153,7 +151,7 @@ plt.ylabel("Final Grade (G3)")
 plt.grid(True, linestyle="--", alpha=0.5)
 
 # Save the second plot
-plt.savefig("outputs/g3_vs_absences_scatter.png")
+plt.savefig("assignments_02/outputs/g3_vs_absences_scatter.png")
 plt.close()
 
 # Plot 2 Comment:
@@ -276,7 +274,7 @@ plt.ylabel("Actual Final Grade (G3)")
 plt.legend()
 plt.grid(True, linestyle="--", alpha=0.5)
 
-plt.savefig("outputs/predicted_vs_actual.png")
+plt.savefig("assignments_02/outputs/predicted_vs_actual.png")
 plt.close()
 
 print("Plot successfully saved to outputs/predicted_vs_actual.png")
