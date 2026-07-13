@@ -7,6 +7,8 @@ from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 
 
+# Make sure the outputs folder exists
+os.makedirs("assignments_02/outputs", exist_ok=True)
 # ===== scikit-learn Question 1 =====
 # 1. Dataset Setup
 years = np.array([1, 2, 3, 5, 7, 10]).reshape(-1, 1)
@@ -20,16 +22,15 @@ model.fit(years, salary)
 years_to_predict = np.array([4, 8]).reshape(-1, 1)
 predictions = model.predict(years_to_predict)
 
-# 4. Labeled Outputs
-print("\n===== scikit-learn Question 1 Results =====")
-print(f"Slope     : {model.coef_[0]:.2f}")
-print(f"Intercept : {model.intercept_:.2f}")
-print(f"Salary prediction for 4 years: ${predictions[0]:,.2f}")
-print(f"Salary prediction for 8 years: ${predictions[1]:,.2f}")
+# 4. Print the outputs with labels
+print("Slope (model.coef_[0]):", model.coef_[0])
+print("Intercept (model.intercept_):", model.intercept_)
+print("Prediction for 4 years of experience:", predictions[0])
+print("Prediction for 8 years of experience:", predictions[1])
 
 # ===== scikit-learn Question 2 =====
 print("\n===== scikit-learn Question 2 Results =====")
-# 1. Start with the 1D array
+# 1. Setup the 1D array
 x = np.array([10, 20, 30, 40, 50])
 print(f"Original 1D shape: {x.shape}")
 
@@ -45,111 +46,44 @@ print(f"Reshaped 2D shape: {X_2d.shape}")
 
 
 # ===== scikit-learn Question 3 =====
-import os
-import matplotlib.pyplot as plt
-import numpy as np
-from sklearn.cluster import KMeans
-from sklearn.datasets import make_blobs
-from sklearn.linear_model import LinearRegression
 
-# Ensure the outputs directory exists before saving files
-os.makedirs("outputs", exist_ok=True)
+# Generate the data points
+X_clusters, y_true = make_blobs(n_samples=120, centers=3, cluster_std=0.8, random_state=7)
 
-# ==========================================
-# --- scikit-learn API ---
-# ==========================================
-
-# --- Q1 ---
-print("--- Question 1 ---")
-years = np.array([1, 2, 3, 5, 7, 10]).reshape(-1, 1)
-salary = np.array([45000, 50000, 60000, 75000, 90000, 120000])
-
-# Create and fit model
-model = LinearRegression()
-model.fit(years, salary)
-
-# Predict for 4 and 8 years of experience
-test_years = np.array([4, 8]).reshape(-1, 1)
-predictions = model.predict(test_years)
-
-# Print labeled metrics
-print(f"Model Slope (coef_): {model.coef_[0]:.2f}")
-print(f"Model Intercept: {model.intercept_:.2f}")
-print(f"Predicted Salary for 4 years experience: ${predictions[0]:.2f}")
-print(f"Predicted Salary for 8 years experience: ${predictions[1]:.2f}")
-print()
-
-
-# --- Q2 ---
-print("--- Question 2 ---")
-x = np.array([10, 20, 30, 40, 50])
-print(f"Original 1D shape: {x.shape}")
-
-x_2d = x.reshape(-1, 1)
-print(f"Reshaped 2D shape: {x_2d.shape}")
-
-# COMMENT EXPLAINING 2D REQUIREMENT:
-# Scikit-learn expects X to be a 2D matrix because machine learning datasets
-# typically contain multiple samples (rows) and multiple features (columns).
-# Even when working with a single feature, keeping a 2D format ensures consistency
-# across the entire API, allowing functions to always treat columns as individual features.
-print()
-
-
-# --- Q3 ---
-print("--- Question 3 ---")
-# Generate synthetic dataset
-X_clusters, _ = make_blobs(
-    n_samples=120, centers=3, cluster_std=0.8, random_state=7
-)
-
-# Create, fit, and predict labels
+# 1. Create the KMeans model
 kmeans = KMeans(n_clusters=3, random_state=42)
+
+# 2. Fit the model and predict labels at the same time
 labels = kmeans.fit_predict(X_clusters)
 
-# Get metrics
-centers = kmeans.cluster_centers_
-counts = np.bincount(labels)
 
-# Print results
-print("Cluster Centers:\n", centers)
-print(f"Points per cluster (Cluster 0, 1, 2): {counts}")
+# 3. Print the results
+print("\n===== scikit-learn Question 3 Results =====")
+print("Cluster centers:\n", kmeans.cluster_centers_)
+print("Points in each cluster:", np.bincount(labels))
 
-# Plotting the results
-plt.figure(figsize=(8, 6))
+# 4. Create the scatter plot
+plt.figure()
 
-# Scatter plot colored by cluster label
-plt.scatter(
-    X_clusters[:, 0],
-    X_clusters[:, 1],
-    c=labels,
-    cmap="viridis",
-    alpha=0.6,
-    edgecolors="k",
-)
+# Plot the dataset points (colored by their assigned cluster label)
+plt.scatter(X_clusters[:, 0], X_clusters[:, 1], c=labels)
 
-# Plot cluster centers as black X's
-plt.scatter(
-    centers[:, 0],
-    centers[:, 1],
-    c="black",
-    marker="x",
-    s=200,
-    linewidths=3,
-    label="Centers",
-)
+# Plot the center marks as big black X's
+plt.scatter(kmeans.cluster_centers_[:, 0], kmeans.cluster_centers_[:, 1], color="black", marker="X", s=200)
 
-plt.title("K-Means Clustering Result")
+# Add titles and labels
+plt.title("K-Means Clusters")
 plt.xlabel("Feature 1")
 plt.ylabel("Feature 2")
-plt.legend()
 
-# Save the figure
-output_path = "outputs/kmeans_clusters.png"
-plt.savefig(output_path)
+# Save the picture to the outputs folder
+plt.savefig("assignments_02/outputs/kmeans_clusters.png")
 plt.close()
 
-print(f"\nPlot successfully saved to: {output_path}")
+print("Plot saved successfully to outputs/kmeans_clusters.png")
+
+
+
 
 
 # --- Linear Regression ---
@@ -178,7 +112,7 @@ plt.ylabel("Annual Medical Cost ($)")
 plt.grid(True, linestyle="--", alpha=0.5)
 
 # Save the plot
-plt.savefig("outputs/cost_vs_age.png")
+plt.savefig("assignments_02/outputs/cost_vs_age.png")
 plt.close()
 
 print("\n===== Linear Regression  Question 1: Visualizing Medical Cost vs Age  Results  =====")
@@ -212,92 +146,85 @@ print("y_test shape:", y_test.shape)
 
 # ===== Linear Regression  Question 3: Fit Model, Predict, and Evaluate =====
 
-# 1. Create and train the model
-model_age = LinearRegression()
-model_age.fit(X_train, y_train)
+# --- Linear Regression Question 3 ---
+print("\n--- Linear Regression Question 3 ---")
 
-# 2. Print the slope and intercept
-print("Slope:", model_age.coef_[0])
-print("Intercept:", model_age.intercept_)
+# Create and fit the single-feature model
+model_single = LinearRegression()
+model_single.fit(X_train, y_train)
 
-# 3. Make predictions on the test data
-y_pred = model_age.predict(X_test)
+# Predict on the test set
+y_pred_single = model_single.predict(X_test)
 
-# 4. Calculate and print performance metrics
-rmse = np.sqrt(np.mean((y_pred - y_test) ** 2))
-r2 = model_age.score(X_test, y_test)
+# Calculate metrics manually using basic formulas
+rmse_single = np.sqrt(np.mean((y_pred_single - y_test) ** 2))
+r2_single = model_single.score(X_test, y_test)
 
+# Print outputs
 print("\n===== Linear Regression  Question 3: Fit Model, Predict, and Evaluate Results  =====")
-print("RMSE:", rmse)
-print("R2 score:", r2)
+print("Slope (Coefficient):", model_single.coef_[0])
+print("Intercept:", model_single.intercept_)
+print("RMSE:", rmse_single)
+print("R² on test set:", r2_single)
 
-# Comment Interpretation:
-# The slope tells us how much the medical cost changes for each year we age.
-# For example, a slope of 240 means that for every 1 year a person gets older, 
-# their predicted annual medical cost goes up by about $240.
+# Interpretation of the single-feature slope:
+# In plain English, the slope means that for every 1-year increase in age, 
+# the model estimates that a patient's medical cost increases by roughly $254. 
+# However, because this model ignores smoker status, this slope is exaggerated 
+# to try and bridge the gap between the two separate patient bands.
 
 # ===== Linear Regression  Question 4: Multiple Linear Regression with Age and Smoker =====
 
-# 1. Combine age and smoker into a 2D matrix
+# Stack age and smoker side-by-side into a 2D table
 X_full = np.column_stack([age, smoker])
 
-# 2. Split into 80% training and 20% testing
-X_train_f, X_test_f, y_train_f, y_test_f = train_test_split(
-    X_full, cost, test_size=0.20, random_state=42
-)
+# Split the full feature dataset (80/20)
+X_train_f, X_test_f, y_train_f, y_test_f = train_test_split(X_full, y_cost, test_size=0.2, random_state=42)
 
-# 3. Create and train the new model
+# Create and fit the two-feature model
 model_full = LinearRegression()
 model_full.fit(X_train_f, y_train_f)
 
+# Evaluate and print results
 print("\n===== Linear Regression  Question 4: Multiple Linear Regression with Age and Smoker Results  =====")
-# 4. Print and compare R2 scores
 r2_full = model_full.score(X_test_f, y_test_f)
-print("New R2 score:", r2_full)
-print("Old R2 score:", r2)
-
-# 5. Print both coefficients
+print("R² with both features:", r2_full)
 print("age coefficient: ", model_full.coef_[0])
 print("smoker coefficient: ", model_full.coef_[1])
 
-# Comment Interpretation:
-# The smoker coefficient is the extra cost added for being a smoker.
-# It means a smoker is predicted to pay about $15,000 more per year 
-# than a non-smoker of the exact same age.
-# Adding this flag helps because the R2 score jumped close to 1.0.
+# Does adding the smoker flag help?
+# Yes, adding the smoker flag helps immensely! The R² score jumps drastically 
+# from around 0.17 to over 0.90, explaining almost all variation in the data.
+
+# Interpretation of the smoker coefficient:
+# In practical terms, holding age constant, being a smoker adds an estimated 
+# fixed penalty of roughly $15,103 to a patient's annual medical costs.
 
 # ===== Linear Regression  Question 5: Predicted vs Actual Plot =====
 
-# 1. Get predictions from the two-feature model
-y_pred_f = model_full.predict(X_test_f)
+# Generate predictions using our two-feature model
+y_pred_full = model_full.predict(X_test_f)
 
-# 2. Start the plot
-plt.figure(figsize=(8, 6))
+plt.figure()
+# Plot predicted values vs actual true values
+plt.scatter(y_pred_full, y_test_f, color="blue")
 
-# 3. Draw the scatter points (X = predictions, Y = real values)
-plt.scatter(y_pred_f, y_test_f, color="blue", alpha=0.7, edgecolors="k")
+# Create a perfect diagonal line from min cost to max cost
+min_val = min(min(y_pred_full), min(y_test_f))
+max_val = max(max(y_pred_full), max(y_test_f))
+plt.plot([min_val, max_val], [min_val, max_val], color="red", linestyle="--")
 
-# 4. Create a diagonal reference line (min value to max value)
-line_range = [min(y_test_f), max(y_test_f)]
-plt.plot(line_range, line_range, color="red", linestyle="--", label="Perfect Model")
-
-# 5. Add titles, labels, and save
 plt.title("Predicted vs Actual")
-plt.xlabel("Predicted Medical Cost ($)")
-plt.ylabel("Actual Medical Cost ($)")
-plt.legend()
-plt.grid(True, linestyle="--", alpha=0.5)
-
-plt.savefig("outputs/predicted_vs_actual.png")
+plt.xlabel("Predicted Medical Costs")
+plt.ylabel("Actual Medical Costs")
+plt.savefig("assignments_02/outputs/predicted_vs_actual.png")
 plt.close()
 
-print("\n===== Linear Regression  Question 5: Fit Model, Predict, and Evaluate Results  =====")
-print("Plot successfully saved to outputs/predicted_vs_actual.png")
+print("\n===== Linear Regression  Question 5:  Predicted vs Actual Plot Results  =====")
+print("Plot saved to outputs/predicted_vs_actual.png")
 
-# Comment Interpretation:
-# When a point falls ABOVE the red diagonal line, it means the actual cost 
-# was higher than what the model predicted (the model under-predicted).
-# When a point falls BELOW the red line, it means the actual cost was 
-# lower than what the model predicted (the model over-predicted).
-
-
+# Meaning of points relative to the diagonal line:
+# If a point falls ABOVE the red diagonal line, it means the actual cost was higher 
+# than what the model predicted (the model under-predicted the cost).
+# If a point falls BELOW the red diagonal line, it means the actual cost was lower 
+# than what the model predicted (the model over-predicted the cost).
