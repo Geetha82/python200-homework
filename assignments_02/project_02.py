@@ -101,62 +101,45 @@ print(f"Pearson correlation (Absences vs G3) on FILTERED data: {corr_filtered:.4
 
 # ===== Task 3: Exploratory Data Analysis =====
 
-print("\n--- Task 3: Exploratory Data Analysis ---")
+print("--- Task 3: Exploratory Data Analysis ---")
 
-# 1. Isolate strictly numeric features for direct correlation calculation
-# We explicitly avoid string-based categories that haven't been engineered yet
 numeric_features = [
     'age', 'Medu', 'Fedu', 'traveltime', 'studytime', 
     'failures', 'absences', 'freetime', 'goout', 'Walc'
 ]
 
-# Calculate Pearson correlation with our target variable G3
+# Calculate and sort Pearson correlation with G3 on the filtered dataset
 correlations = df_filtered[numeric_features].corrwith(df_filtered['G3'])
-
-# Sort from most negative to most positive
 sorted_correlations = correlations.sort_values()
 
 print("Numeric Feature Correlations with G3 (Sorted):")
 print(sorted_correlations)
 print()
 
-# Identification of strongest relationships:
-# - Strongest Negative Relationship: 'failures' (~ -0.29)
-# - Strongest Positive Relationship: 'Medu' (~ +0.24) or 'studytime' (~ +0.13)
-#
-# Surprising Insights:
-# 'Walc' (weekend alcohol) and 'goout' have tiny, negligible negative correlations.
-# This is unexpected, as intuition tells us heavy partying should crater math grades.
-# Instead, structural factors like past academic failures and maternal education
-# play a far greater foundational role in final grade outcomes.
+os.makedirs("outputs", exist_ok=True)
 
-
-# --- 2. Data Visualization ---
-
+# ------------------------------------------------------------------------------
 # Plot A: Box Plot of G3 grouped by Past Class Failures
-# Rationale: 'failures' shows the strongest negative correlation. A box plot helps
-# us see the distributional shifts and drops in median grades for each failure increment.
+# ------------------------------------------------------------------------------
 plt.figure(figsize=(7, 5))
 df_filtered.boxplot(column='G3', by='failures', grid=False, 
                     patch_artist=True, boxprops=dict(facecolor='lightblue'))
 plt.title("Final Math Grade (G3) Distribution by Past Failures")
-plt.suptitle("") # Clear pandas automatic subtitle default
+plt.suptitle("") 
 plt.xlabel("Number of Past Class Failures")
 plt.ylabel("Final Grade (G3)")
 plt.tight_layout()
 plt.savefig("outputs/g3_by_failures_box.png")
 plt.close()
 
-# Plot A Comment/Observation:
-# As seen in 'outputs/g3_by_failures_box.png', there is a clear step-down effect. 
-# Students with 0 past failures have a median grade around 11-12. This drops 
-# dramatically for students with 1, 2, or 3 failures, highlighting 'failures' 
-# as an important behavioral threshold feature for our model.
+# PLOT A VISUAL ANALYSIS VERIFICATION:
+# This plot tracks the strongest negative feature: 'failures' (~-0.29).
+# Visually, the median G3 grade drops continuously at each incremental step 
+# of past failures, establishing it as a primary negative threshold feature.
 
-
+# ------------------------------------------------------------------------------
 # Plot B: Bar Plot of Mean G3 by Mother's Education Level (Medu)
-# Rationale: 'Medu' has the strongest positive correlation. A bar plot cleanly 
-# visualizes whether average scores rise with higher maternal educational attainment.
+# ------------------------------------------------------------------------------
 plt.figure(figsize=(7, 5))
 mean_g3_by_medu = df_filtered.groupby('Medu')['G3'].mean()
 mean_g3_by_medu.plot(kind='bar', color='seagreen', edgecolor='black', alpha=0.8)
@@ -169,13 +152,53 @@ plt.tight_layout()
 plt.savefig("outputs/g3_by_medu_bar.png")
 plt.close()
 
-# Plot B Comment/Observation:
-# Looking at 'outputs/g3_by_medu_bar.png', student performance scales almost
-# linearly with maternal education. Students whose mothers have higher education (4) 
-# score significantly higher on average than those whose mothers have zero or primary
-# education, making this a powerful positive predictive feature.
+# PLOT B VISUAL ANALYSIS VERIFICATION:
+# This plot tracks the strongest positive feature: 'Medu' (~+0.24).
+# Visually, the mean G3 grade increases almost linearly with maternal education levels, 
+# demonstrating that higher socioeconomic anchors correspond to higher student scores.
 
-print("Task 3 Exploratory plots saved to assignments_02/outputs/")
+
+# ==============================================================================
+# --- Task 5: Build the Full Model ---
+# ==============================================================================
+print("--- Task 5: Full Multiple Regression Model ---")
+
+feature_cols = [
+    "failures", "Medu", "Fedu", "studytime", "higher", 
+    "schoolsup", "internet", "sex", "freetime", "activities", "traveltime"
+]
+
+X_full = df_filtered[feature_cols].values
+y_full = df_filtered["G3"].values
+
+X_train_f, X_test_f, y_train_f, y_test_f = train_test_split(
+    X_full, y_full, test_size=0.2, random_state=42
+)
+
+full_model = LinearRegression()
+full_model.fit(X_train_f, y_train_f)
+
+train_r2_f = r2_score(y_train_f, full_model.predict(X_train_f))
+test_r2_f = r2_score(y_test_f, full_model.predict(X_test_f))
+test_rmse_f = root_mean_squared_error(y_test_f, full_model.predict(X_test_f))
+
+print(f"Full Model Train R² Score: {train_r2_f:.4f}")
+print(f"Full Model Test R² Score:  {test_r2_f:.4f}")
+print(f"Full Model Test RMSE:      {test_rmse_f:.4f}\n")
+
+# EXACT OUTPUT PATTERN REQUIRED BY ASSIGNMENT INSTRUCTIONS:
+for name, coef in zip(feature_cols, full_model.coef_):
+    print(f"{name:12s}: {coef:+.3f}")
+print()
+
+# Coefficient Insight: 'Fedu' turns negative (-0.147) because of multicollinearity 
+# with 'Medu'. 'schoolsup' is negative (-1.352) due to reverse causality—remedial 
+# tutoring is target-assigned to students who enter already struggling.
+# Train vs Test Gap: The metrics (0.235 vs 0.201) are tight, meaning no overfitting.
+# Production Deployment Choice: Keep actionable items ('failures', 'schoolsup', 
+# 'higher', 'Medu', 'studytime'). Drop 'sex' due to ethical fairness constraints, 
+# and drop low-value variance columns ('activities', 'internet', 'traveltime').
+
 
 # ===== Task 4: Baseline Model =====
 
@@ -229,165 +252,76 @@ print(f"Baseline Test R² Score:         {r2_b:.4f}\n")
 
 
 # ===== Task 5: Build the Full Model =====
-print("\n--- Task 5: Full Multiple Regression Model ---")
+print("--- Task 5: Full Multiple Regression Model ---")
 
-# 1. Define the complete list of target feature columns from the guide
 feature_cols = [
     "failures", "Medu", "Fedu", "studytime", "higher", 
     "schoolsup", "internet", "sex", "freetime", "activities", "traveltime"
 ]
 
-# Extract feature matrix and target vector from the preprocessed DataFrame
 X_full = df_filtered[feature_cols].values
 y_full = df_filtered["G3"].values
 
-# 2. Split into training and test sets using the designated seed mapping
 X_train_f, X_test_f, y_train_f, y_test_f = train_test_split(
     X_full, y_full, test_size=0.2, random_state=42
 )
 
-# 3. Fit the full Multiple Linear Regression model
 full_model = LinearRegression()
 full_model.fit(X_train_f, y_train_f)
 
-# 4. Generate prediction metrics across splits
-train_preds_f = full_model.predict(X_train_f)
-test_preds_f = full_model.predict(X_test_f)
-
-train_r2_f = r2_score(y_train_f, train_preds_f)
-test_r2_f = r2_score(y_test_f, test_preds_f)
-test_rmse_f = root_mean_squared_error(y_test_f, test_preds_f)
+train_r2_f = r2_score(y_train_f, full_model.predict(X_train_f))
+test_r2_f = r2_score(y_test_f, full_model.predict(X_test_f))
+test_rmse_f = root_mean_squared_error(y_test_f, full_model.predict(X_test_f))
 
 print(f"Full Model Train R² Score: {train_r2_f:.4f}")
 print(f"Full Model Test R² Score:  {test_r2_f:.4f}")
 print(f"Full Model Test RMSE:      {test_rmse_f:.4f}\n")
 
-# 5. Print each feature name matched precisely with its coefficient weight
-print("Feature Coefficients:")
+# EXACT OUTPUT PATTERN REQUIRED BY ASSIGNMENT INSTRUCTIONS:
 for name, coef in zip(feature_cols, full_model.coef_):
     print(f"{name:12s}: {coef:+.3f}")
 print()
 
-# --- CRITICAL ANALYSIS AND INTERPRETATION COMMENTS ---
+# Coefficient Insight: 'Fedu' turns negative (-0.147) because of multicollinearity 
+# with 'Medu'. 'schoolsup' is negative (-1.352) due to reverse causality—remedial 
+# tutoring is target-assigned to students who enter already struggling.
+# Train vs Test Gap: The metrics (0.235 vs 0.201) are tight, meaning no overfitting.
+# Production Deployment Choice: Keep actionable items ('failures', 'schoolsup', 
+# 'higher', 'Medu', 'studytime'). Drop 'sex' due to ethical fairness constraints, 
+# and drop low-value variance columns ('activities', 'internet', 'traveltime').
 
-# Baseline vs. Full Model Comparison:
-# Adding more features helped significantly. The test R² improved from ~0.081 
-# in the baseline model to ~0.201 in the full model. This means that expanding 
-# our scope to include student background and lifestyle features more than doubles 
-# our ability to explain variance in academic outcomes (from 8% to roughly 20%).
-#
-# Surprising Coefficient Signs & Explanations:
-# 1. Fedu (Father's Education) is negative (-0.147). This is surprising because 
-#    one would expect higher parental education to universally boost scores. 
-#    Explanation: This is a classic symptom of multicollinearity. Because Medu 
-#    and Fedu are highly correlated with each other, the model awards the positive 
-#    predictive weight to Medu, leaving Fedu to pick up the residual variance, 
-#    which turns its tracking sign negative mathematically.
-# 2. schoolsup (Extra School Support) is strongly negative (-1.352). This looks 
-#    paradoxical—why would tutoring lower grades? Explanation: This is reverse 
-#    causality. Students are assigned to remedial tutoring *because* they are 
-#    struggling. The negative sign confirms tutoring targets lower-performing students.
-#
-# Train R² vs. Test R² Variance Gap:
-# Train R² (~0.235) is quite close to Test R² (~0.201). Because the metric drop-off 
-# is very small, it proves that the model is structurally stable and is NOT heavily 
-# overfitting to the training partition. It generalizes reasonably well.
-#
-# Production Deployment Selection & Justification:
-# If deploying this model to flag at-risk students for early academic intervention, 
-# I would make the following adjustments to the feature selections:
-#
-# KEEP:
-# - 'failures' and 'schoolsup': Strong numeric signals for academic distress.
-# - 'higher': Wanting higher education provides strong intrinsic tracking weight (+1.10).
-# - 'Medu': Reliable socioeconomic foundational background anchor (+0.55).
-# - 'studytime': Directly actionable behavioral target column (+0.44).
-#
-# DROP:
-# - 'sex': While it has an active tracking coefficient (+0.95), using gender as 
-#   a feature in an automated educational deployment introduces deep ethical bias, 
-#   violates equity standards, and risks institutionalizing systemic social patterns.
-# - 'activities', 'internet', 'traveltime', 'freetime': These weights are all tiny 
-#   (close to zero) and add unnecessary variance and complexity for little value.
-# - 'Fedu': Dropped to clear up the multicollinearity interference with Medu.
 
 
 # ===== Task 6: Evaluate and Summarize =====
-print("\n--- Task 6: Evaluating Predictions and Generating Summary ---")
+print("--- Task 6: Evaluate and Summarize ---")
 
-# 1. Create the Predicted vs. Actual Diagnostic Scatter Plot
 plt.figure(figsize=(7, 7))
-plt.scatter(test_preds_f, y_test_f, color='darkorange', edgecolor='k', alpha=0.7, s=50, label='Test Data Points')
-
-# Create a clean diagonal reference line (where Predicted == Actual)
-# We find the min and max limits from the data bounds to frame the line perfectly
-min_val = min(min(test_preds_f), min(y_test_f))
-max_val = max(max(test_preds_f), max(y_test_f))
-plt.plot([min_val, max_val], [min_val, max_val], color='navy', linestyle='--', linewidth=2, label='Perfect Prediction Line')
-
-# Format the chart according to specifications
-plt.title("Predicted vs Actual (Full Model)", fontsize=14, pad=15)
-plt.xlabel("Predicted Final Grade (ŷ)", fontsize=12)
-plt.ylabel("True Final Grade (y)", fontsize=12)
-plt.xlim(min_val - 0.5, max_val + 0.5)
-plt.ylim(min_val - 0.5, max_val + 0.5)
-plt.grid(True, linestyle=':', alpha=0.6)
-plt.legend(loc='upper left')
-
-# Adjust layout boundaries and save the figure
+plt.scatter(full_model.predict(X_test_f), y_test_f, color='darkorange', edgecolor='k', alpha=0.7)
+min_val = min(min(full_model.predict(X_test_f)), min(y_test_f))
+max_val = max(max(full_model.predict(X_test_f)), max(y_test_f))
+plt.plot([min_val, max_val], [min_val, max_val], color='navy', linestyle='--')
+plt.title("Predicted vs Actual (Full Model)")
+plt.xlabel("Predicted Final Grade (ŷ)")
+plt.ylabel("True Final Grade (y)")
 plt.tight_layout()
 plt.savefig("outputs/predicted_vs_actual.png")
 plt.close()
 
-print("Diagnostic plot saved to outputs/predicted_vs_actual.png")
+# Plot Diagnostic Insight:
+# A value above the diagonal represents an under-prediction; below means over-prediction. 
+# The model visibly struggles at both extremes (truncating low and high predictions).
 
-# ==============================================================================
-# --- EXECUTIVE SUMMARY AND PLOT ANALYSIS ---
-# ==============================================================================
-#
-# Plot Diagnosis:
-# - Directional Errors: A data point ABOVE the diagonal reference line means the 
-#   model UNDER-predicted the student's grade (the true grade was higher than 
-#   expected). A data point BELOW the diagonal line means the model OVER-predicted 
-#   the grade (the true grade fell short of expectations).
-#
-# - Systematic Struggles: The model struggles heavily at BOTH the high and low ends. 
-#   At the low end, it fails to predict very low scores (grades 4-7); instead, it 
-#   clusters its predictions tightly between 9 and 13. At the high end, it lacks the 
-#   resolution to predict top-tier marks (grades 18-20), truncating predictions near 
-#   a ceiling of 14. The error is NOT uniform; it compresses variance toward the mean.
-#
 # ------------------------------------------------------------------------------
-# PLAIN-LANGUAGE EXECUTIVE SUMMARY
+# CONCISE PLAIN-LANGUAGE SUMMARY
 # ------------------------------------------------------------------------------
-# 1. Dataset Dimensions:
-#    The total cleaned dataset (after removing students who missed the exam) consists 
-#    of 357 students. The test validation set contains a slice of 72 student records.
-#
-# 2. Performance Evaluation:
-#    Our optimized multiple regression model achieved a Test R² of ~0.201 and a 
-#    Root Mean Squared Error (RMSE) of ~2.72. In plain English, this means that 
-#    knowing a student's lifestyle patterns allows us to explain roughly 20% of 
-#    why math grades differ. A typical prediction error means our model misses 
-#    a student's true final grade by an average margin of roughly 2.7 points 
-#    on the traditional 0-20 scale.
-#
-# 3. Primary Feature Drivers:
-#    - Largest Positive Coefficient: 'higher' (+1.10). Students explicitly stating 
-#      an intrinsic desire to pursue university-level higher education see an expected 
-#      boost of over 1.1 grade points compared to peers who do not.
-#    - Largest Negative Coefficient: 'schoolsup' (-1.35). Extra institutional support 
-#      maps to an expected drop of 1.35 grade points. This indicates reverse-causality 
-#      in the data architecture—remedial help is assigned to students who are already 
-#      falling behind.
-#
-# 4. Key Surprising Finding:
-#    The biggest surprise was that weekend drinking ('Walc') and going out with 
-#    friends ('goout') had almost no linear statistical weight on final grades. 
-#    Rather than behavioral social distractions causing academic failure, historical 
-#    academic foundations ('failures') and socioeconomic baseline indicators ('Medu') 
-#    wield significantly more predictive influence over final math proficiency.
-# ==============================================================================
+# * Filtered Dataset Size: 357 student records.
+# * Test Dataset Size: 72 student records.
+# * Metric Meaning: An R² of 0.20 means lifestyle features explain 20% of grade variance. 
+#   An RMSE of 2.72 means typical grade predictions miss reality by ±2.7 points on the 0-20 scale.
+# * Largest Positive Feature: 'higher' (+1.10) — wanting university tracks to higher performance.
+# * Largest Negative Feature: 'schoolsup' (-1.35) — tutoring flags pre-existing student struggle.
+# * Core Surprise: Partying columns ('Walc', 'goout') have a negligible correlation with outcomes.
+# ------------------------------------------------------------------------------
 
 # ==============================================================================
 # --- Neglected Feature: The Power of G1 ---
