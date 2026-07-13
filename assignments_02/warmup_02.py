@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split
 
 
 # Make sure the outputs folder exists
-os.makedirs("assignments_02/outputs", exist_ok=True)
+os.makedirs("outputs", exist_ok=True)
 # ===== scikit-learn Question 1 =====
 # 1. Dataset Setup
 years = np.array([1, 2, 3, 5, 7, 10]).reshape(-1, 1)
@@ -77,7 +77,7 @@ plt.xlabel("Feature 1")
 plt.ylabel("Feature 2")
 
 # Save the picture to the outputs folder
-plt.savefig("assignments_02/outputs/kmeans_clusters.png")
+plt.savefig("outputs/kmeans_clusters.png")
 plt.close()
 
 print("Plot saved successfully to outputs/kmeans_clusters.png")
@@ -112,7 +112,7 @@ plt.ylabel("Annual Medical Cost ($)")
 plt.grid(True, linestyle="--", alpha=0.5)
 
 # Save the plot
-plt.savefig("assignments_02/outputs/cost_vs_age.png")
+plt.savefig("outputs/cost_vs_age.png")
 plt.close()
 
 print("\n===== Linear Regression  Question 1: Visualizing Medical Cost vs Age  Results  =====")
@@ -217,7 +217,7 @@ plt.plot([min_val, max_val], [min_val, max_val], color="red", linestyle="--")
 plt.title("Predicted vs Actual")
 plt.xlabel("Predicted Medical Costs")
 plt.ylabel("Actual Medical Costs")
-plt.savefig("assignments_02/outputs/predicted_vs_actual.png")
+plt.savefig("outputs/predicted_vs_actual.png")
 plt.close()
 
 print("\n===== Linear Regression  Question 5:  Predicted vs Actual Plot Results  =====")
