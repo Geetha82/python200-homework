@@ -44,6 +44,8 @@ plt.xticks(range(0, 21))
 plt.grid(axis="y", linestyle="--", alpha=0.5)
 
 # Save the visualization to the outputs directory
+# 5. Ensure outputs directory exists and save figure
+os.makedirs("outputs", exist_ok=True)
 plt.savefig("outputs/g3_distribution.png", bbox_inches="tight")
 plt.close()
 
@@ -104,13 +106,13 @@ print(f"Correlation between absences and G3 (Filtered Dataset) : {corr_filtered:
 
 print("--- Task 3: Exploratory Data Analysis ---")
 
-# 1. Isolate the designated numeric features from the feature guide
+# Isolate numeric features specified in the Feature Guide
 numeric_features = [
     "age", "Medu", "Fedu", "traveltime", "studytime", 
     "failures", "absences", "freetime", "goout", "Walc"
 ]
 
-# Compute correlations with G3 on the filtered dataset
+# Compute Pearson correlations with G3 using the filtered dataset
 correlations = df_filtered[numeric_features].corrwith(df_filtered["G3"])
 correlations_sorted = correlations.sort_values()
 
@@ -119,57 +121,55 @@ for feature, score in correlations_sorted.items():
     print(f"  {feature:12}: {score:+.4f}")
 print("")
 
-# --- Correlation Insights Comment ---
-# The feature with the strongest linear relationship to G3 is "failures" (negative). 
-# This makes perfect logical sense, as a history of past academic struggles is a 
-# strong signal of systemic learning gaps. 
-# What might be surprising is how weak the negative correlation is for weekend alcohol 
-# consumption ("Walc") or free time ("freetime") compared to active habits like 
-# going out with friends ("goout"). Additionally, mother's education ("Medu") 
-# displays a stronger positive relationship with student math outcomes than father's 
-# education ("Fedu").
+# --- VISUALIZATION SELECTION AND MOTIVATION COMMENT ---
+# Based on the sorted correlation results above, my choice of visualizations 
+# is directly guided by the strongest indicators in the filtered data:
+# 1. "failures" has the strongest negative correlation (-0.2933), making it 
+#    the top candidate to visualize as an academic barrier.
+# 2. "Medu" (Mother's education) has the strongest positive correlation (+0.2925), 
+#    making it the top candidate to visualize as an academic advantage.
 
-# 2. Visualization 1: Boxplot of G3 by Number of Past Class Failures
+# Plot 1: Boxplot of G3 vs. Past Class Failures (Guided by top negative correlation)
 plt.figure(figsize=(8, 5))
-# Group data manually to avoid external plotting package dependencies
 failure_groups = [df_filtered[df_filtered["failures"] == i]["G3"] for i in sorted(df_filtered["failures"].unique())]
 plt.boxplot(failure_groups, tick_labels=sorted(df_filtered["failures"].unique()), patch_artist=True,
             boxprops=dict(facecolor="lightcoral", color="darkred"),
             medianprops=dict(color="black", linewidth=1.5))
 
-plt.title("Final Math Grade (G3) Distribution by Past Failures")
+plt.title("G3 Grade Distribution by Past Failures (Top Negative Predictor)")
 plt.xlabel("Number of Past Class Failures")
 plt.ylabel("Final Grade (G3)")
 plt.grid(axis="y", linestyle=":", alpha=0.6)
 plt.savefig("outputs/g3_vs_failures_boxplot.png", bbox_inches="tight")
 plt.close()
 
-# --- Plot 1 Observation Comment ---
-# This boxplot shows a clear downward shift in the median final math grade as the 
-# number of past failures increases. Students with 0 past failures maintain a stable 
-# median around 11–12, whereas students with 1, 2, or 3 failures see their scores 
-# compress heavily toward the passing line, validating it as a critical negative predictor.
+# --- Plot 1 Observation ---
+# This plot visually confirms the strong negative correlation found in our EDA. 
+# As the number of past failures increases from 0 to 3, the median final math grade 
+# drops sharply. The entire grade distribution compresses downward, validating why 
+# "failures" is our most dominant individual negative tracking feature.
 
-# 3. Visualization 2: Boxplot of G3 by Mother's Education Level (Medu)
+# Plot 2: Boxplot of G3 vs. Mother's Education (Guided by top positive correlation)
 plt.figure(figsize=(8, 5))
-medu_labels = ["0: None", "1: Primary", "2: 5th-9th Grade", "3: Secondary", "4: Higher Ed"]
+medu_labels = ["0: None", "1: Primary", "2: 5th-9th", "3: Secondary", "4: Higher Ed"]
 medu_groups = [df_filtered[df_filtered["Medu"] == i]["G3"] for i in range(5)]
+# Change labels=medu_labels to tick_labels=medu_labels
 plt.boxplot(medu_groups, tick_labels=medu_labels, patch_artist=True,
             boxprops=dict(facecolor="aquamarine", color="teal"),
             medianprops=dict(color="black", linewidth=1.5))
 
-plt.title("Final Math Grade (G3) Distribution by Mother's Education")
+plt.title("G3 Grade Distribution by Mother's Education (Top Positive Predictor)")
 plt.xlabel("Mother's Education Level (Medu)")
 plt.ylabel("Final Grade (G3)")
 plt.grid(axis="y", linestyle=":", alpha=0.6)
 plt.savefig("outputs/g3_vs_medu_boxplot.png", bbox_inches="tight")
 plt.close()
 
-# --- Plot 2 Observation Comment ---
-# This plot highlights that higher maternal educational attainment correlates with 
-# an upward shift in student performance distributions. The median score rises 
-# steadily from level 1 up to level 4. This matches the positive Pearson correlation 
-# value and confirms socio-environmental support as an important academic baseline.
+# --- Plot 2 Observation ---
+# This plot visually confirms the strong positive correlation found in our EDA. 
+# There is a steady upward trend in student final grades as maternal education 
+# levels increase. Students whose mothers achieved higher education (level 4) 
+# exhibit a notably higher median and upper quartile score compared to those at level 1.
 
 
 # ==============================================================================
@@ -299,17 +299,11 @@ print("")
 # TASK 6: EVALUATE AND SUMMARIZE
 # ==============================================================================
 
-# 1. Generate the Predicted vs. Actual Performance Scatter Plot
 plt.figure(figsize=(7, 7))
-plt.scatter(y_test_pred_f, y_test_f, alpha=0.7, color="teal", edgecolors="black", label="Test Student")
-
-# Determine range limits to ensure a perfectly proportional square canvas
+plt.scatter(y_test_pred_f, y_test_f, alpha=0.7, color="teal", edgecolors="black", label="Students")
 min_val = min(y_test_f.min(), y_test_pred_f.min()) - 1
 max_val = max(y_test_f.max(), y_test_pred_f.max()) + 1
-
-# Plot the 45-degree diagonal perfect fit line (y_predicted = y_actual)
 plt.plot([min_val, max_val], [min_val, max_val], color="crimson", linestyle="--", linewidth=2, label="Perfect Fit")
-
 plt.title("Predicted vs Actual (Full Model)")
 plt.xlabel("Predicted Final Math Grade (ŷ)")
 plt.ylabel("Actual Final Math Grade (y)")
@@ -317,115 +311,74 @@ plt.xlim(min_val, max_val)
 plt.ylim(min_val, max_val)
 plt.legend()
 plt.grid(True, linestyle=":", alpha=0.6)
-
-# Save the diagnostic graphic
 plt.savefig("outputs/predicted_vs_actual.png", bbox_inches="tight")
 plt.close()
 
-# --- Plot Evaluation Comment ---
-# The model struggles heavily at both the extreme low end and high end. Notice 
-# how the predictions (x-axis) are tightly compressed between ~9 and ~13, never 
-# predicting a very low or very high score. This is a common limitation of linear 
-# regression on weak behavioral data—it playing it safe by predicting close to the 
-# mean.
-# * A point ABOVE the diagonal means the actual grade was higher than predicted (the 
-#   model underestimated the student).
-# * A point BELOW the diagonal means the actual grade was lower than predicted (the 
-#   model overestimated the student).
+# --- Plot Error Analysis Comment ---
+# The model struggles significantly at the extreme low and extreme high ends 
+# of the grade spectrum. It compresses its predictions safely between 9 and 13.
+# * A value ABOVE the diagonal line means the actual grade was higher than 
+#   what the model predicted, meaning the model underestimated that student.
+# * A value BELOW the diagonal line means the actual grade was lower than 
+#   what the model predicted, meaning the model overestimated that student.
 
-# ==============================================================================
-#                      PLAIN-LANGUAGE MODEL SUMMARY
-# ==============================================================================
-#
-# 1. DATASET SCALE:
-#    * Filtered Dataset Size: 357 students (after dropping exam absences).
-#    * Evaluation Test Set: 72 students (20% holdout split).
-#
-# 2. MODEL METRICS & PREDICTION ERROR:
-#    * Test R² Score: 0.2036. This indicates that lifestyle, demographic, and 
-#      behavioral features explain roughly 20.4% of the variance in final grades. 
-#    * Test RMSE: 2.94 grade points. On a standard 0–20 grading scale, a typical 
-#      prediction error is about 3 points. For example, if a student's actual 
-#      aptitude warrants a grade of 12, the model might easily guess anywhere 
-#      between a 9 or a 15, which is quite a wide range for academic placement.
-#
-# 3. DOMINANT FEATURES & IMPACT:
-#    * Largest Positive Coefficient: "higher" (+1.258)
-#      Interpretation: Students who actively plan to pursue higher education score 
-#      about 1.26 points higher on average. This highlights internal motivation 
-#      and long-term ambition as top academic drivers.
-#    * Largest Negative Coefficient: "schoolsup" (-1.442)
-#      Interpretation: Receiving extra school support is associated with a 1.44 point 
-#      drop in final grades. This does not mean tutoring harms performance; it shows 
-#      selection bias, as only structurally struggling students are assigned remediation.
-#
-# 4. SURPRISING RESULT:
-#    * "failures" vs. "studytime": While we assume study hours dictate test scores, 
-#      "studytime" has a tiny positive weight (+0.329), while past class "failures" 
-#      has a massive negative pull (-1.135). Overcoming historical academic deficits 
-#      impacts final math scores far more than simply logging extra study hours.
-#
-# ==============================================================================
-print("Task 6 Complete: Performance plot exported to outputs/predicted_vs_actual.png")
+# --- PLAIN-LANGUAGE SUMMARY COMMENT STATEMENTS ---
+# The total size of the filtered dataset used for this analysis is 357 students.
+# Out of these, the test set holdout used to evaluate model performance contains 72 students.
+# The best background model achieved a test R² of 0.2036 and a test RMSE of 2.9431.
+# In plain English, an R² of ~0.20 means our background features only capture about 20% 
+# of why grades vary, leaving 80% unexplained. An RMSE of ~2.94 means that on a 0-20 scale, 
+# a typical prediction is off by about 3 full grade points, which is a wide error margin.
+# The feature with the largest positive coefficient is "higher" (+1.258). This means that 
+# when controlling for other features, a student who wants to pursue higher education 
+# is predicted to score about 1.26 points higher on their final exam.
+# The feature with the largest negative coefficient is "schoolsup" (-1.442). This means 
+# that students receiving extra educational support score 1.44 points lower on average. 
+# One result that surprised me was the deep negative weight of "schoolsup". This is an 
+# example of selection bias in data engineering: the tutoring support itself isn't 
+# lowering grades, but rather, students are only given tutoring because they were 
+# already falling behind.
+
 
 
 # ==============================================================================
-# NEGLECTED FEATURE: THE POWER OF G1
+# NEGLECTED FEATURE: THE POWER OF G1 (EXTENSION REVISION)
 # ==============================================================================
 
 print("--- Neglected Feature Analysis: Incorporating G1 ---")
 
-# 1. Expand feature columns to include G1 alongside all behavioral columns
 feature_cols_with_g1 = feature_cols + ["G1"]
-
-# 2. Extract feature matrix X and target vector y from our filtered DataFrame
 X_g1 = df_filtered[feature_cols_with_g1].values
 y_g1 = df_filtered["G3"].values
 
-# 3. Maintain the identical train/test split parameters (80/20, random_state=42)
 X_train_g1, X_test_g1, y_train_g1, y_test_g1 = train_test_split(
     X_g1, y_g1, test_size=0.20, random_state=42
 )
 
-# 4. Fit the expanded model
 model_g1 = LinearRegression()
 model_g1.fit(X_train_g1, y_train_g1)
 
-# 5. Generate predictions and evaluate metrics
 y_pred_g1 = model_g1.predict(X_test_g1)
-r2_test_g1 = r2_score(y_test_g1, y_pred_g1)
-rmse_test_g1 = np.sqrt(mean_squared_error(y_test_g1, y_pred_g1))
+print(f"Model with G1 Included - Test R²  : {r2_score(y_test_g1, y_pred_g1):.4f}")
+print(f"Model with G1 Included - Test RMSE: {np.sqrt(mean_squared_error(y_test_g1, y_pred_g1)):.4f}\n")
 
-print(f"Model with G1 Included - Test R²  : {r2_test_g1:.4f}")
-print(f"Model with G1 Included - Test RMSE: {rmse_test_g1:.4f} grade points\n")
-
-# ==============================================================================
-#                      G1 INTERPRETATION & REFLECTION
-# ==============================================================================
+# --- MULTI-PROMPT EXTENSION DISCUSSION COMMENTS ---
+# Prompt 1: Does a high R² here mean G1 is causing G3?
+# No, a high R² does not mean that scoring well on the G1 exam causes a student 
+# to score well on G3. G1 is simply an early proxy measure of the same underlying 
+# academic ability and study patterns. Math is highly cumulative, so performance 
+# on early coursework naturally maps strongly to performance on final exams.
 #
-# 1. DOES A HIGH R² MEAN G1 CAUSES G3?
-#    No, G1 does not "cause" G3. Correlation does not equal causation. G1 is 
-#    simply an early measurement of the exact same underlying construct: a 
-#    student's mathematical capability, study habits, and grasp of the course 
-#    material. G1 acts as a proxy or "sneak peek" for G3 because math curricula 
-#    are highly cumulative.
+# Prompt 2: Is this a useful model for identifying students who might struggle?
+# While highly predictive, this model is not very useful for proactive intervention. 
+# By the time the G1 exam is taken, graded, and fed into an analysis pipeline, 
+# several months of the school year have passed. Waiting for a formal grade means 
+# identifying struggling students only after they have already fallen behind.
 #
-# 2. IS THIS A USEFUL MODEL FOR IDENTIFYING STUDENTS WHO MIGHT STRUGGLE?
-#    It is highly accurate, but its practical usefulness is limited by timing. 
-#    By the time the G1 exam is graded and processed, the first grading period 
-#    is already over. Waiting until G1 is available means students have already 
-#    spent months falling behind on basic concepts, making intervention harder.
-#
-# 3. WHAT MUST EDUCATORS DO TO INTERVENE EARLY (BEFORE G1 IS AVAILABLE)?
-#    To flag students on day one, educators cannot rely on high-accuracy test 
-#    proxies. They must rely on the weaker behavioral and lifestyle features 
-#    modeled in Task 5. 
-#    * They should build intake risk profiles using background traits (e.g., 
-#      flagging students with 1 or more past class "failures").
-#    * They should track early diagnostic signals that show up weeks before an 
-#      official exam, such as real-time homework completion rates, attendance 
-#      and school "absences" within the first 14 days, or low "studytime" flags.
-#
-# ==============================================================================
-print("Analysis Complete: Final scripts are ready for staging and PR submission.")
+# Prompt 3: What might educators need to do if they wanted to intervene early, before G1 is even available?
+# To intervene early, educators must bypass late-stage test proxies entirely. They 
+# need to use the lower-accuracy behavioral and background features modeled in Task 5. 
+# This means flagging students on day one based on historic factors like past "failures", 
+# or tracking real-time behavioral signals during the first two weeks of class—such as 
+# early homework submission rates, drop-offs in attendance, and initial absences.
 
