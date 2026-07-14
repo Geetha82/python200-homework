@@ -7,13 +7,12 @@
 # ==============================================================================
 
 import os
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from prefect import flow, task, get_run_logger
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, r2_score
 
 # ==============================================================================
 # TASK 1: LOAD AND EXPLORE
@@ -92,13 +91,14 @@ print(f"Correlation between absences and G3 (Original Dataset): {corr_original:.
 print(f"Correlation between absences and G3 (Filtered Dataset) : {corr_filtered:.4f}\n")
 
 # --- Correlation Shift Comment ---
-# In the original data, the correlation is very close to zero, making it look 
-# like absences do not matter. This happens because the students who missed 
-# the exam (G3=0) actually had zero or very few absences leading up to the test. 
-# In a scatter plot, these points create a vertical cluster at (0 absences, 0 grade), 
-# which completely cancels out the downward trend of the rest of the class. 
-# Once filtered, the true negative relationship emerges: more absences clearly 
-# correlate with a lower final grade.
+# In the original data, the correlation is artificially close to zero, making it look 
+# like absences do not predict grades. This happens because the students with G3=0 
+# were actually present all semester—accumulating zero or very few absences—but then 
+# did not take the final exam. In the raw dataset, these rows create a dense cluster 
+# of points at (0 absences, 0 grade). This position completely counteracts and flatlines 
+# the natural downward slope of the rest of the class. Once we filter out the students 
+# who skipped the exam, the distortion disappears, and the true negative relationship 
+# emerges: more absences clearly predict lower performance.
 
 # ==============================================================================
 # TASK 3: EXPLORATORY DATA ANALYSIS
