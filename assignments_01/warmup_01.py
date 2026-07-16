@@ -161,10 +161,10 @@ plt.xlabel("x")
 plt.ylabel("y")
 
 # Create the outputs folder if it doesn't exist yet
-os.makedirs("outputs", exist_ok=True)
+os.makedirs("assignments_01/outputs", exist_ok=True)
 
 # SAVE the plot to  outputs folder BEFORE showing it
-plt.savefig("outputs/lineplot.png")
+plt.savefig("assignments_01/outputs/lineplot.png")
 
 # Display the plot
 plt.show()
@@ -186,7 +186,7 @@ plt.xlabel("Subjects")
 plt.ylabel("Scores")
 
 # SAVE the plot to  outputs folder BEFORE showing it
-plt.savefig("outputs/barchart.png")
+plt.savefig("assignments_01/outputs/barchart.png")
 
 # Display the plot
 plt.show()
@@ -213,7 +213,7 @@ plt.ylabel("Y-Axis")
 plt.legend()
 
 # SAVE the plot to  outputs folder BEFORE showing it
-plt.savefig("outputs/scatterplot.png")
+plt.savefig("assignments_01/outputs/scatterplot.png")
 
 # Display the plot
 plt.show()
@@ -246,7 +246,7 @@ ax2.set_ylabel("Scores")
 plt.tight_layout()
 
 # SAVE the plot to  outputs folder BEFORE showing it
-plt.savefig("outputs/subplots.png")
+plt.savefig("assignments_01/outputs/subplots.png")
 
 # Display the final combined figure
 plt.show()
@@ -288,7 +288,7 @@ plt.xlabel("Scores")
 plt.ylabel("Frequency")
 
 # SAVE the plot to  outputs folder BEFORE showing it
-plt.savefig("outputs/normal_distribution_histogram.png")
+plt.savefig("assignments_01/outputs/normal_distribution_histogram.png")
 
 # Display the plot
 plt.show()
@@ -307,7 +307,7 @@ plt.title("Score Comparison")
 plt.ylabel("Scores")
 
 # 2. SAVE the plot to  outputs folder BEFORE showing it
-plt.savefig("outputs/score_comparison_boxplot.png")
+plt.savefig("assignments_01/outputs/score_comparison_boxplot.png")
 
 # Display the plot
 plt.show()
@@ -327,7 +327,7 @@ plt.title("Distribution Comparison")
 plt.ylabel("Values")
 
 # Save and Show
-plt.savefig("outputs/distribution_comparison.png")
+plt.savefig("assignments_01/outputs/distribution_comparison.png")
 plt.show()
 
 # 1. Which distribution is more skewed? 
@@ -514,7 +514,7 @@ plt.xlabel("x values")
 plt.ylabel("y values")
 
 # Save and Show (keeping it in your outputs folder)
-plt.savefig("outputs/negative_correlation_scatter.png")
+plt.savefig("assignments_01/outputs/negative_correlation_scatter.png")
 plt.show()
 
 print("Scatter plot 'Negative Correlation' displayed and saved successfully.")
@@ -533,7 +533,7 @@ sns.heatmap(people_corr_matrix, annot=True, cmap='coolwarm')
 plt.title("Correlation Heatmap")
 
 # 4. Save and Show
-plt.savefig("outputs/correlation_heatmap.png")
+plt.savefig("assignments_01/outputs/correlation_heatmap.png")
 plt.show()
 
 print("Heatmap 'Correlation Heatmap' generated and saved successfully.")
