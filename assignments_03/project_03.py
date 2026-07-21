@@ -449,43 +449,35 @@ the architectures to validate across 5 entirely different permutations of hidden
 print("\n ===== Task 5: Building Prediction Pipelines Results =====")
 
 # --- 1. THE TREE-BASED PRODUCTION PIPELINE ---
-# Decision trees and random forests are scale-invariant, meaning they
-# operate perfectly on raw data features without an explicit scaler step.
+# Scale-invariant tree model trained on raw data features.
 tree_pipeline = Pipeline([
     ("classifier", RandomForestClassifier(n_estimators=100, random_state=42))
 ])
 
-# --- 2. THE NON-TREE PRODUCTION PIPELINE ---
-# Distance and linear-based models require explicit scaling. PCA is injected
-# between the scaling step and the model estimator as requested by the prompt.
+# --- 2. THE NON-TREE PRODUCTION PIPELINE (WITH PCA) ---
+# Sequence includes scaling, PCA components projection, and the linear classifier.
 nontree_pipeline = Pipeline([
     ("scaler", StandardScaler()),
-    ("pca", PCA(n_components=n)),  # Uses 'n' derived in Task 2b
-    ("classifier", LogisticRegression(C=1.0, max_iter=1000, solver='liblinear'))
+    ("pca", PCA(n_components=n)),  # Injected PCA step using 'n' from Task 2
+    ("classifier", LogisticRegression(C=1.0, max_iter=1000, solver='liblinear', random_state=42))
 ])
 
 # --- 3. TRAIN AND EVALUATE TREE PIPELINE ---
-print("\nTraining the Tree-Based Pipeline (Random Forest)...")
+print("\nTraining Final Tree-Based Pipeline (Random Forest)...")
 tree_pipeline.fit(X_train, y_train)
-
 tree_accuracy = tree_pipeline.score(X_test, y_test)
 print(f"Tree Pipeline Test Accuracy Score: {tree_accuracy:.4f}")
-
-tree_predictions = tree_pipeline.predict(X_test)
-print("\nTree Pipeline Final Classification Report:")
-print(classification_report(y_test, tree_predictions))
-
+print("Tree Pipeline Final Classification Report:")
+print(classification_report(y_test, tree_pipeline.predict(X_test)))
 
 # --- 4. TRAIN AND EVALUATE NON-TREE PIPELINE ---
-print("\nTraining the Non-Tree Pipeline (Logistic Regression + PCA)...")
+print("\nTraining Final Non-Tree Pipeline (Logistic Regression + PCA)...")
 nontree_pipeline.fit(X_train, y_train)
-
 nontree_accuracy = nontree_pipeline.score(X_test, y_test)
 print(f"Non-Tree Pipeline Test Accuracy Score: {nontree_accuracy:.4f}")
+print("Non-Tree Pipeline Final Classification Report:")
+print(classification_report(y_test, nontree_pipeline.predict(X_test)))
 
-nontree_predictions = nontree_pipeline.predict(X_test)
-print("\nNon-Tree Pipeline Final Classification Report:")
-print(classification_report(y_test, nontree_predictions))
 
 # ----- Build Two pipelines -----
 

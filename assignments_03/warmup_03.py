@@ -172,28 +172,31 @@ print(classification_report(y_test, y_pred_dt))
 
 # --- Logistic Regression and Regularization ---
 # Q1
-
 # Define the C parameter values to evaluate
 c_values = [0.01, 1.0, 100.0]
 
 print("\n--- Logistic Regression Regularization Question1 Results ---")
-# Loop over each C value, train the model, and measure coefficient sizes
-for c in c_values:
-    # Initialize model with current C value and specified parameters
-    lr_model = OneVsRestClassifier(LogisticRegression(C=c, max_iter=1000, solver='liblinear', random_state=42))
 
+# Loop over each C value, train the model, and measure coefficient sizes literally
+for c in c_values:
+    # Initialize the base LogisticRegression model directly without wrappers
+    lr_model = LogisticRegression(C=c, max_iter=1000, solver='liblinear', random_state=42)
+    
     # Fit the model on the scaled training data
     lr_model.fit(X_train_scaled, y_train)
     
-    # Calculate the sum of the absolute values of all coefficients
-    coef_magnitude = sum(np.abs(est.coef_).sum() for est in lr_model.estimators_)
+    # Calculate the sum of the absolute values of all coefficients directly from the object attribute
+    coef_magnitude = np.abs(lr_model.coef_).sum()
     
     # Display results
     print(f"C value: {c:6.2f} | Total Coefficient Magnitude: {coef_magnitude:.4f}")
 
 # Comment:
-# As the C value increases, the total magnitude of the coefficients also increases. 
-# This tells us that smaller values of C apply stronger regularization, forcing the model to penalize large weights and shrink the coefficients closer to zero to prevent overfitting, whereas larger values of C loosen the penalty, allowing the model to fit the training data more aggressively.
+# As the C value increases, the total magnitude of the coefficients also increases.
+# This tells us that smaller values of C apply stronger regularization, forcing the model to 
+# penalize large weights and shrink the coefficients closer to zero to prevent overfitting, 
+# whereas larger values of C loosen the penalty, allowing the model to fit the training data 
+# more aggressively.
 
 # # --- PCA ---
 # PCA Setup
@@ -282,10 +285,9 @@ plt.close()
 # This means we can reduce the data dimensionality from 64 original pixel features 
 # down to just 13 components while still retaining 80% of the structural information.
 
-# Q4
-
-# The preprocessing lesson showed that a reconstruction is built by starting from the mean and adding each component weighted by its score. Here is the same idea generalized to n components -- add this function to your file:
-
+# Q4 
+# The preprocessing lesson showed that a reconstruction is built by starting from the mean and adding each component weighted by its score. 
+# Here is the same idea generalized to n components -- add this function to your file: 
 def reconstruct_digit(sample_idx, scores, pca, n_components):
     """Reconstruct one digit using the first n_components principal components."""
     reconstruction = pca.mean_.copy()
@@ -293,38 +295,40 @@ def reconstruct_digit(sample_idx, scores, pca, n_components):
         reconstruction = reconstruction + scores[sample_idx, i] * pca.components_[i]
     return reconstruction.reshape(8, 8)
 
-# Setup grid: 5 rows total (1 Original row followed by 4 reconstruction rows for n=2, 5, 15, 40) x 5 columns
+# Setup grid: 5 rows (Original, n=2, n=5, n=15, n=40) x 5 columns (first 5 samples)
 n_values = [2, 5, 15, 40]
-fig, axes = plt.subplots(5, 5, figsize=(10, 10))
+fig, axes = plt.subplots(5, 5, figsize=(10, 11))
 
+print("\n--- PCA Question 4 Results ---")
+
+# --- Row 0: Original images ---
 for col_idx in range(5):
-    # Row 0: Original images
     axes[0, col_idx].imshow(images[col_idx], cmap='gray_r')
+    axes[0, col_idx].axis('off')  # Turn off box borders for clean digit rendering
+    
+    # Explicitly title the top-left cell so the entire row is clearly identified as the Original anchor
     if col_idx == 0:
-        axes[0, col_idx].set_ylabel("Original", fontsize=12, fontweight='bold')
-    axes[0, col_idx].set_xticks([])
-    axes[0, col_idx].set_yticks([])
+        axes[0, col_idx].set_title("Original Row", loc='left', fontsize=12, fontweight='bold', pad=10)
 
-    # Rows 1-4: Reconstructions with varying n_components
-    for row_idx, n in enumerate(n_values, start=1):
+# --- Rows 1-4: Reconstructions with varying n_components ---
+for row_idx, n in enumerate(n_values, start=1):
+    for col_idx in range(5):
         recon_img = reconstruct_digit(col_idx, scores, pca, n_components=n)
         axes[row_idx, col_idx].imshow(recon_img, cmap='gray_r')
+        axes[row_idx, col_idx].axis('off')
         
+        # Explicitly label the start of each reconstruction tier row
         if col_idx == 0:
-            axes[row_idx, col_idx].set_ylabel(f"n = {n}", fontsize=12, fontweight='bold')
-        axes[row_idx, col_idx].set_xticks([])
-        axes[row_idx, col_idx].set_yticks([])
+            axes[row_idx, col_idx].set_title(f"n = {n} Components", loc='left', fontsize=12, fontweight='bold', pad=10)
 
-# Save to outputs/pca_reconstructions.png
-print("\n--- PCA Question4 Results ---")
-print("\n outputs/pca_reconstructions.png saved in outputs folder ")
+# Save output to outputs/pca_reconstructions.png
+print("outputs/pca_reconstructions.png saved in outputs folder")
 plt.tight_layout()
-plt.savefig("outputs/pca_reconstructions.png", bbox_inches='tight')
+plt.savefig("outputs/pca_reconstructions.png", bbox_inches='tight', dpi=150)
 plt.close()
 
 # Add a comment: at what n do the digits become clearly recognizable, 
 # and does that match where the variance curve levels off?
-
 # The digits become clearly recognizable at around n = 15 components. 
 # This aligns perfectly with the variance curve from Question 3, where 13-15 components 
 # capture over 80% of the variance. By the time we reach n = 40, the reconstructions 
