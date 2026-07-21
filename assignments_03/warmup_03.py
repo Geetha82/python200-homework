@@ -215,10 +215,11 @@ print("\n--- PCA Question 4 Results ---")
 # --- Row 0: Original images ---
 for col_idx in range(5):
     axes[0, col_idx].imshow(images[col_idx], cmap='gray_r')
-    axes[0, col_idx].set_xticks([])  # Strip ticks for a clean look
+    # Strip interior grid markers for visual clarity
+    axes[0, col_idx].set_xticks([])
     axes[0, col_idx].set_yticks([])
     
-    # Use set_ylabel on the first column subplot to label the entire row
+    # Label the far-left border of the grid to signify the entire row represents Originals
     if col_idx == 0:
         axes[0, col_idx].set_ylabel("Original", fontsize=12, fontweight='bold', labelpad=15)
 
@@ -230,7 +231,7 @@ for row_idx, n in enumerate(n_values, start=1):
         axes[row_idx, col_idx].set_xticks([])
         axes[row_idx, col_idx].set_yticks([])
         
-        # Use set_ylabel on the first column subplot to label the reconstruction tiers
+        # Label the far-left border of the grid to signify the principal components tier
         if col_idx == 0:
             axes[row_idx, col_idx].set_ylabel(f"n = {n}", fontsize=12, fontweight='bold', labelpad=15)
 
@@ -242,11 +243,10 @@ plt.close()
 
 # Add a comment: at what n do the digits become clearly recognizable, 
 # and does that match where the variance curve levels off?
-# The digits become clearly recognizable at around n = 15 components. 
-# This aligns perfectly with the variance curve from Question 3, where 13-15 components 
-# capture over 80% of the variance. By the time we reach n = 40, the reconstructions 
-# are nearly identical to the originals, capturing almost all fine details as the 
-# variance curve flattens out completely toward 100%.
+# The digits become clearly recognizable at n = 15. This matches the variance curve 
+# from Question 3, which begins to level off and flatten significantly past 13-15 
+# components after successfully capturing over 80% of the total dataset variance.
+
 
 print("\nAll warmup exercises complete.")
 # The digits become clearly recognizable at around n = 15 components. This aligns perfectly with our variance curve leveling off point, where a tiny minority of components capture the vast majority of dataset structures.
