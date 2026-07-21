@@ -10,6 +10,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.multiclass import OneVsRestClassifier
+
 from sklearn.metrics import (
     accuracy_score,
     classification_report,
@@ -102,23 +103,23 @@ print(f"Standard deviation of scores: {cv_scores.std():.4f}")
 # and why?
 # # It evaluates the model across multiple distinct data splits, ensuring that the performance metric is stable and not an artifact of a lucky or unlucky random selection of data during a single split.
 
-# Q4
+# Q4 
+# Define the array 
+k_values = [1, 3, 5, 7, 9, 11, 13, 15] 
+print("\n===== KNN Question 4 Results =====") 
 
-# Define the array
-k_values = [1, 3, 5, 7, 9, 11, 13, 15]
+# Loop over k values 
+# For each, compute 5-fold cross-validation accuracy on the unscaled training data
+for k in k_values: 
+    knn_tune = KNeighborsClassifier(n_neighbors=k) 
+    scores = cross_val_score(knn_tune, X_train, y_train, cv=5) 
+    # print k and the mean CV score 
+    print(f"k = {k:2d} | Mean CV Accuracy: {scores.mean():.4f}") 
 
-print("\n===== KNN Question 4 Results =====")
-# Loop over k values
-#  For each, compute 5-fold cross-validation accuracy on the unscaled training data and 
-for k in k_values:
-    knn_tune = KNeighborsClassifier(n_neighbors=k)
-    scores = cross_val_score(knn_tune, X_train, y_train, cv=5)
-    # print k and the mean CV score
-    print(f"k = {k:2d} | Mean CV Accuracy: {scores.mean():.4f}")
-
-# Add a comment identifying which k you would choose and why.
-#I would choose k = 11 or k = 13 because they yield the highest mean cross-validation accuracy (typically around 96.67% depending on the split) on the training set. 
-# Picking a slightly higher, odd k value helps smooth out decision boundaries, protects the model against localized noise, and avoids voting ties.   
+# I would choose k = 5 because it achieves the peak mean cross-validation accuracy of 0.9750. 
+# While it ties with k = 7, k = 5 is the better choice for production deployment because a smaller 
+# neighborhood requires evaluating fewer data points, minimizing computational overhead and 
+# memory footprint during inference while preserving maximum generalization capacity.
 
 # --- Classifier Evaluation ---
 # Q1
@@ -292,7 +293,7 @@ def reconstruct_digit(sample_idx, scores, pca, n_components):
         reconstruction = reconstruction + scores[sample_idx, i] * pca.components_[i]
     return reconstruction.reshape(8, 8)
 
-# Setup grid: 5 rows (Original, n=2, n=5, n=15, n=40) x 5 columns (first 5 samples)
+# Setup grid: 5 rows total (1 Original row followed by 4 reconstruction rows for n=2, 5, 15, 40) x 5 columns
 n_values = [2, 5, 15, 40]
 fig, axes = plt.subplots(5, 5, figsize=(10, 10))
 

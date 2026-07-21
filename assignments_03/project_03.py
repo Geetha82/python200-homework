@@ -84,32 +84,36 @@ for feature in target_features:
 print(f"Successfully generated and saved: {output_path}\n")
 
 
-# ----- TASK 2: DATA PREPARATION ------
+# ----- TASK 2: Prepare Your Data ------
 
-# --- PREPROCESSING INITIALIZATION ---
-os.makedirs("outputs", exist_ok=True)
+# --- 1. TRAIN/TEST SPLIT ---
+# Design Choices:
+# - test_size=0.2: Reserves 20% of the dataset for testing generalization.
+# - random_state=42: Ensures a deterministic split for reproducible results.
+# - stratify=y: Maintains the ~61% Ham / 39% Spam class distribution across
+#   both splits to prevent class-imbalance bias during evaluation.
 
-print("Fetching Spambase dataset...")
-spambase = fetch_ucirepo(id=94)
-X = spambase.data.features
-y = spambase.data.targets.values.ravel()
-feature_names = X.columns.tolist()
-
-# Train/Test Split (Stratified due to class imbalance)
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42, stratify=y
 )
 
-# Standardize data (Crucial for KNN and PCA metrics)
+# --- 2. FEATURE SCALING ---
+# Design Choices:
+# - StandardScaler: Centers data around 0 with a unit standard deviation.
+# - Prevents features with huge values (like capital run lengths) from
+#   overwhelming features expressed as tiny percentages (word frequencies).
+# - Data Leakage Prevention: We .fit_transform() ONLY on the training data.
+#   The testing data is purely .transform()ed using the training parameters.
+
 scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
 
+#  ----- TASK 2b: PCA PREPROCESSING ------
 
+# Rule: Always scale data before PCA so large raw values do not dominate variance.
+# Data Leakage Prevention: Fit PCA on the training data ONLY. 
 
-# -----  TASK 2: PCA PREPROCESSING ------
-
-# Fit PCA on scaled training data only to block test data leakage
 pca = PCA()
 pca.fit(X_train_scaled)
 
@@ -118,35 +122,30 @@ cumulative_variance = np.cumsum(pca.explained_variance_ratio_)
 
 # Identify 'n': components where cumulative variance first reaches/exceeds 90%
 n = np.argmax(cumulative_variance >= 0.90) + 1
-print(
-    f"n = {n} (Number of components where cumulative variance first reaches 90%)"
-)
+
+print("\n===== Task 2: PCA Preprocessing Results =====")
+print(f"Number of components where cumulative variance first reaches 90% (n): {n}")
 
 # Plot and save cumulative explained variance curve
 plt.figure(figsize=(7, 5))
-plt.plot(
-    range(1, len(cumulative_variance) + 1),
-    cumulative_variance,
-    marker="o",
-    linestyle="--",
-    color="b",
-)
-plt.axhline(y=0.90, color="r", linestyle=":", label="90% Variance Threshold")
-plt.axvline(
-    x=n, color="g", linestyle=":", label=f"n = {n} Components"
-)
+plt.plot(range(1, len(cumulative_variance) + 1), cumulative_variance, marker='o', linestyle='--', color='b')
+plt.axhline(y=0.90, color='r', linestyle=':', label='90% Variance Threshold')
+plt.axvline(x=n, color='g', linestyle=':', label=f'n = {n} Components')
 plt.title("Spambase PCA: Cumulative Explained Variance Curve")
 plt.xlabel("Number of Principal Components")
 plt.ylabel("Cumulative Variance Ratio")
 plt.legend(loc="lower right")
-plt.grid(True, linestyle=":", alpha=0.6)
+plt.grid(True, linestyle=':', alpha=0.6)
 plt.tight_layout()
 plt.savefig("outputs/pca_explained_variance.png", dpi=150)
 plt.close()
 
-# Slice matrices down to the top 'n' principal components
+# Slice matrices down to the top 'n' principal components based on the determined 'n'
 X_train_pca = pca.transform(X_train_scaled)[:, :n]
 X_test_pca = pca.transform(X_test_scaled)[:, :n]
+
+# Keep both full scaled arrays (X_train_scaled, X_test_scaled) and 
+# PCA-reduced arrays (X_train_pca, X_test_pca) intact for Task 3.
 
 
 # ----- TASK 3: CLASSIFIER COMPARISON ------
@@ -208,9 +207,9 @@ print("\n--- Decision Tree Max Depth Evaluation ---")
 tree_depths = [3, 5, 10, None]
 for depth in tree_depths:
     dt_sweep = DecisionTreeClassifier(max_depth=depth, random_state=42)
-    dt_sweep.fit(X_train_scaled, y_train)
-    tr_acc = accuracy_score(y_train, dt_sweep.predict(X_train_scaled))
-    te_acc = accuracy_score(y_test, dt_sweep.predict(X_test_scaled))
+    dt_sweep.fit(X_train, y_train)  # <-- Changed from X_train_scaled to X_train
+    tr_acc = accuracy_score(y_train, dt_sweep.predict(X_train))  # <-- Changed from X_train_scaled to X_train
+    te_acc = accuracy_score(y_test, dt_sweep.predict(X_test))  # <-- Changed from X_test_scaled to X_test
     depth_label = "Unlimited" if depth is None else str(depth)
     print(
         f"  Max Depth: {depth_label:<10} | Train Accuracy: {tr_acc:.4f} | Test Accuracy: {te_acc:.4f}"
@@ -220,11 +219,11 @@ for depth in tree_depths:
 chosen_depth = 5
 dt_final = DecisionTreeClassifier(max_depth=chosen_depth, random_state=42)
 run_evaluation(
-    f"Decision Tree (max_depth={chosen_depth}) - Scaled Data",
+    f"Decision Tree (max_depth={chosen_depth}) - Unscaled Data",  # <-- Label updated
     dt_final,
-    X_train_scaled,
+    X_train,  # <-- Changed from X_train_scaled to X_train
     y_train,
-    X_test_scaled,
+    X_test,  # <-- Changed from X_test_scaled to X_test
     y_test,
 )
 
@@ -262,6 +261,9 @@ run_evaluation(
 # -----  TASK 3: FEATURE IMPORTANCE & CONFUSION MATRIX
 
 # Extract Gini importance measurements into tabular layouts
+# Extract the list of feature strings directly from your features DataFrame columns
+feature_names = X.columns.tolist()
+
 dt_imp_df = pd.DataFrame(
     {"Feature": feature_names, "Importance": dt_final.feature_importances_}
 ).sort_values(by="Importance", ascending=False)
@@ -444,40 +446,46 @@ the architectures to validate across 5 entirely different permutations of hidden
 
 # ----- TASK 5: PREDICTION PIPELINE -----
 
-# --- 1. DEFINE THE UNIFIED PIPELINE CONTEXT ---
-# Design Choice:
-# By enclosing the components inside a scikit-learn Pipeline object, data is 
-# automatically passed in order through scaling, then PCA reduction, and finally 
-# into the LogisticRegression model estimator.
-#
-# Crucially, this structurally eliminates the risk of Data Leakage because the 
-# pipeline isolates fitting mechanics to training inputs only.
-production_pipeline = Pipeline([
+print("\n ===== Task 5: Building Prediction Pipelines Results =====")
+
+# --- 1. THE TREE-BASED PRODUCTION PIPELINE ---
+# Decision trees and random forests are scale-invariant, meaning they
+# operate perfectly on raw data features without an explicit scaler step.
+tree_pipeline = Pipeline([
+    ("classifier", RandomForestClassifier(n_estimators=100, random_state=42))
+])
+
+# --- 2. THE NON-TREE PRODUCTION PIPELINE ---
+# Distance and linear-based models require explicit scaling. PCA is injected
+# between the scaling step and the model estimator as requested by the prompt.
+nontree_pipeline = Pipeline([
     ("scaler", StandardScaler()),
-    ("pca", PCA(n_components=n)), # Uses 'n' derived in Task 2b
+    ("pca", PCA(n_components=n)),  # Uses 'n' derived in Task 2b
     ("classifier", LogisticRegression(C=1.0, max_iter=1000, solver='liblinear'))
 ])
 
-# --- 2. TRAIN THE PIPELINE ---
-# We pass the raw unscaled X_train here. The pipeline handles all 
-# bookkeeping internally, fitting the scaler and PCA elements safely.
+# --- 3. TRAIN AND EVALUATE TREE PIPELINE ---
+print("\nTraining the Tree-Based Pipeline (Random Forest)...")
+tree_pipeline.fit(X_train, y_train)
 
-print("\n ===== Task 5: Building a Prediction Pipeline Results =====\n")
+tree_accuracy = tree_pipeline.score(X_test, y_test)
+print(f"Tree Pipeline Test Accuracy Score: {tree_accuracy:.4f}")
 
-print("Training the unified production pipeline...")
-production_pipeline.fit(X_train, y_train)
+tree_predictions = tree_pipeline.predict(X_test)
+print("\nTree Pipeline Final Classification Report:")
+print(classification_report(y_test, tree_predictions))
 
-# --- 3. EVALUATING VIA PIPELINE ACTIONS ---
-# Use the built-in score() method to compute raw test accuracy in one single call.
-# This runs X_test through the scaling/PCA transformation formulas learned from 
-# X_train, runs predictions, and compares them to y_test.
-pipeline_accuracy = production_pipeline.score(X_test, y_test)
-print(f"Pipeline Test Accuracy Score: {pipeline_accuracy:.4f}")
 
-# Generate the full classification report to verify pipeline integrity
-pipeline_predictions = production_pipeline.predict(X_test)
-print("\nPipeline Final Classification Report:")
-print(classification_report(y_test, pipeline_predictions))
+# --- 4. TRAIN AND EVALUATE NON-TREE PIPELINE ---
+print("\nTraining the Non-Tree Pipeline (Logistic Regression + PCA)...")
+nontree_pipeline.fit(X_train, y_train)
+
+nontree_accuracy = nontree_pipeline.score(X_test, y_test)
+print(f"Non-Tree Pipeline Test Accuracy Score: {nontree_accuracy:.4f}")
+
+nontree_predictions = nontree_pipeline.predict(X_test)
+print("\nNon-Tree Pipeline Final Classification Report:")
+print(classification_report(y_test, nontree_predictions))
 
 # ----- Build Two pipelines -----
 
