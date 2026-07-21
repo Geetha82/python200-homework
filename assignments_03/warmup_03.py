@@ -196,49 +196,57 @@ plt.close()
 print("Saved outputs/pca_variance_explained.png")
 # need approximately 13 components to explain 80% of the dataset variance.
 
-# Q4
-print("\n--- PCA Question 4 ---")
-
-
+# Q4 
+# The preprocessing lesson showed that a reconstruction is built by starting from the mean and adding each component weighted by its score. 
+# Here is the same idea generalized to n components -- add this function to your file: 
 def reconstruct_digit(sample_idx, scores, pca, n_components):
     """Reconstruct one digit using the first n_components principal components."""
     reconstruction = pca.mean_.copy()
     for i in range(n_components):
-        reconstruction = (
-            reconstruction + scores[sample_idx, i] * pca.components_[i]
-        )
+        reconstruction = reconstruction + scores[sample_idx, i] * pca.components_[i]
     return reconstruction.reshape(8, 8)
 
-
+# Setup grid: 5 rows total x 5 columns (first 5 samples)
 n_values = [2, 5, 15, 40]
 fig, axes = plt.subplots(5, 5, figsize=(10, 11))
 
+print("\n--- PCA Question 4 Results ---")
+
+# --- Row 0: Original images ---
 for col_idx in range(5):
-    # Row 0: Original images
-    axes[0, col_idx].imshow(images[col_idx], cmap="gray_r")
-    axes[0, col_idx].axis("off")
+    axes[0, col_idx].imshow(images[col_idx], cmap='gray_r')
+    axes[0, col_idx].set_xticks([])  # Strip ticks for a clean look
+    axes[0, col_idx].set_yticks([])
+    
+    # Use set_ylabel on the first column subplot to label the entire row
     if col_idx == 0:
-        axes[0, col_idx].set_title(
-            "Original Row", loc="left", fontsize=12, fontweight="bold", pad=10
-        )
+        axes[0, col_idx].set_ylabel("Original", fontsize=12, fontweight='bold', labelpad=15)
 
-    # Rows 1-4: Reconstructions with varying n_components
-    for row_idx, n in enumerate(n_values, start=1):
+# --- Rows 1-4: Reconstructions with varying n_components ---
+for row_idx, n in enumerate(n_values, start=1):
+    for col_idx in range(5):
         recon_img = reconstruct_digit(col_idx, scores, pca, n_components=n)
-        axes[row_idx, col_idx].imshow(recon_img, cmap="gray_r")
-        axes[row_idx, col_idx].axis("off")
+        axes[row_idx, col_idx].imshow(recon_img, cmap='gray_r')
+        axes[row_idx, col_idx].set_xticks([])
+        axes[row_idx, col_idx].set_yticks([])
+        
+        # Use set_ylabel on the first column subplot to label the reconstruction tiers
         if col_idx == 0:
-            axes[row_idx, col_idx].set_title(
-                f"n = {n} Components",
-                loc="left",
-                fontsize=12,
-                fontweight="bold",
-                pad=10,
-            )
+            axes[row_idx, col_idx].set_ylabel(f"n = {n}", fontsize=12, fontweight='bold', labelpad=15)
 
+# Save output to outputs/pca_reconstructions.png
+print("outputs/pca_reconstructions.png saved in outputs folder")
 plt.tight_layout()
-plt.savefig("outputs/pca_reconstructions.png", bbox_inches="tight", dpi=150)
+plt.savefig("outputs/pca_reconstructions.png", bbox_inches='tight', dpi=150)
 plt.close()
-print("Saved outputs/pca_reconstructions.png")
+
+# Add a comment: at what n do the digits become clearly recognizable, 
+# and does that match where the variance curve levels off?
+# The digits become clearly recognizable at around n = 15 components. 
+# This aligns perfectly with the variance curve from Question 3, where 13-15 components 
+# capture over 80% of the variance. By the time we reach n = 40, the reconstructions 
+# are nearly identical to the originals, capturing almost all fine details as the 
+# variance curve flattens out completely toward 100%.
+
 print("\nAll warmup exercises complete.")
 # The digits become clearly recognizable at around n = 15 components. This aligns perfectly with our variance curve leveling off point, where a tiny minority of components capture the vast majority of dataset structures.
