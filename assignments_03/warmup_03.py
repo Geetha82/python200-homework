@@ -14,6 +14,8 @@ from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.multiclass import OneVsRestClassifier
+
 
 # Ensure outputs directory exists
 os.makedirs("outputs", exist_ok=True)
@@ -29,16 +31,15 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42, stratify=y
 )
 print(f"X_train shape: {X_train.shape}")
-print(f"X_test shape:  {X_test.shape}")
+print(f"X_test shape: {X_test.shape}")
 print(f"y_train shape: {y_train.shape}")
-print(f"y_test shape:  {y_test.shape}")
+print(f"y_test shape: {y_test.shape}")
 
 # Q2
 print("\n--- Preprocessing Question 2 ---")
 scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
-
 print("Columns mean in X_train_scaled:")
 print(X_train_scaled.mean(axis=0))
 # We fit the scaler on X_train only to prevent data leakage from the test set into the training phase, preserving a true out-of-sample evaluation.
@@ -78,16 +79,15 @@ for k in k_values:
     knn_tune = KNeighborsClassifier(n_neighbors=k)
     scores = cross_val_score(knn_tune, X_train, y_train, cv=5)
     print(f"k = {k:2d} | Mean CV Accuracy: {scores.mean():.4f}")
-# Add a comment identifying which k you would choose and why. 
-# I would choose k = 5 because it achieves the peak mean cross-validation accuracy of 0.9750. 
-# While it ties with k = 7, k = 5 is the better choice for production deployment because a smaller 
-# neighborhood requires evaluating fewer data points, minimizing computational overhead and 
+# I would choose k = 5 because it achieves the peak mean cross-validation accuracy of 0.9750.
+# While it ties with k = 7, k = 5 is the better choice for production deployment because a smaller
+# neighborhood requires evaluating fewer data points, minimizing computational overhead and
 # memory footprint during inference while preserving maximum generalization capacity.
+
 # --- Classifier Evaluation ---
 # Q1
 print("\n--- Classifier Evaluation Question 1 ---")
-plt.figure(figsize=(6, 5))
-ConfusionMatrixDisplay.from_predictions(
+disp = ConfusionMatrixDisplay.from_predictions(
     y_test, knn_preds, display_labels=iris.target_names, cmap=plt.cm.Blues
 )
 plt.title("KNN (k=5) Confusion Matrix")
@@ -110,34 +110,28 @@ print(classification_report(y_test, dt_preds))
 
 # --- Logistic Regression and Regularization ---
 # Q1
-# Define the C parameter values to evaluate
 c_values = [0.01, 1.0, 100.0]
+print("\n--- Logistic Regression Regularization Question 1 Results ---")
 
-print("\n--- Logistic Regression Regularization Question1 Results ---")
-
-# Loop over each C value, train the model, and measure coefficient sizes literally
 for c in c_values:
-    # Use solver='lbfgs' to handle multi-class iris data directly without parameter errors
-    lr_model = LogisticRegression(C=c, max_iter=1000, solver='lbfgs', random_state=42)
+    # Wrap liblinear inside OneVsRestClassifier to make it compatible with 1.5+ scikit-learn
+    base_lr = LogisticRegression(C=c, max_iter=1000, solver='liblinear', random_state=42)
+    lr_model = OneVsRestClassifier(base_lr)
     
     # Fit the model on the scaled training data
     lr_model.fit(X_train_scaled, y_train)
     
-    # Calculate the sum of the absolute values of all coefficients directly from the object attribute
-    coef_magnitude = np.abs(lr_model.coef_).sum()
+    # Extract coefficients across all internal binary classifiers
+    total_coef = np.array([estimator.coef_.flatten() for estimator in lr_model.estimators_])
+    coef_magnitude = np.abs(total_coef).sum()
     
     # Display results
     print(f"C value: {c:6.2f} | Total Coefficient Magnitude: {coef_magnitude:.4f}")
 
-# Comment:
-# As the C value increases, the total magnitude of the coefficients also increases.
-# This tells us that smaller values of C apply stronger regularization, forcing the model to 
-# penalize large weights and shrink the coefficients closer to zero to prevent overfitting, 
-# whereas larger values of C loosen the penalty, allowing the model to fit the training data 
-# more aggressively. shrink model weights closer to zero.
+
 
 # --- PCA ---
-# Loading block 
+# Loading block
 digits = load_digits()
 X_digits = digits.data
 y_digits = digits.target
@@ -146,8 +140,7 @@ images = digits.images
 # Q1
 print("\n--- PCA Question 1 ---")
 print(f"X_digits shape: {X_digits.shape}")
-print(f"images shape:   {images.shape}")
-
+print(f"images shape: {images.shape}")
 fig, axes = plt.subplots(1, 10, figsize=(12, 3))
 for i in range(10):
     idx = np.where(y_digits == i)[0][0]
@@ -163,7 +156,6 @@ print("Saved outputs/sample_digits.png")
 print("\n--- PCA Question 2 ---")
 pca = PCA()
 scores = pca.fit_transform(X_digits)
-
 plt.figure(figsize=(8, 6))
 scatter = plt.scatter(
     scores[:, 0], scores[:, 1], c=y_digits, cmap="tab10", s=10
@@ -181,7 +173,6 @@ print("Saved outputs/pca_2d_projection.png")
 # Q3
 print("\n--- PCA Question 3 ---")
 cumulative_variance = np.cumsum(pca.explained_variance_ratio_)
-
 plt.figure(figsize=(7, 5))
 plt.plot(range(1, len(cumulative_variance) + 1), cumulative_variance, marker="o")
 plt.axhline(y=0.80, color="r", linestyle=":", label="80% Threshold")
@@ -196,9 +187,7 @@ plt.close()
 print("Saved outputs/pca_variance_explained.png")
 # need approximately 13 components to explain 80% of the dataset variance.
 
-# Q4 
-# The preprocessing lesson showed that a reconstruction is built by starting from the mean and adding each component weighted by its score. 
-# Here is the same idea generalized to n components -- add this function to your file: 
+# Q4
 def reconstruct_digit(sample_idx, scores, pca, n_components):
     """Reconstruct one digit using the first n_components principal components."""
     reconstruction = pca.mean_.copy()
@@ -206,19 +195,15 @@ def reconstruct_digit(sample_idx, scores, pca, n_components):
         reconstruction = reconstruction + scores[sample_idx, i] * pca.components_[i]
     return reconstruction.reshape(8, 8)
 
-# Setup grid: 5 rows total x 5 columns (first 5 samples)
 n_values = [2, 5, 15, 40]
 fig, axes = plt.subplots(5, 5, figsize=(10, 11))
-
 print("\n--- PCA Question 4 Results ---")
 
 # --- Row 0: Original images ---
 for col_idx in range(5):
     axes[0, col_idx].imshow(images[col_idx], cmap='gray_r')
-    axes[0, col_idx].set_xticks([])  # Strip ticks for a clean look
+    axes[0, col_idx].set_xticks([])
     axes[0, col_idx].set_yticks([])
-    
-    # Use set_ylabel on the first column subplot to label the entire row
     if col_idx == 0:
         axes[0, col_idx].set_ylabel("Original", fontsize=12, fontweight='bold', labelpad=15)
 
@@ -229,24 +214,13 @@ for row_idx, n in enumerate(n_values, start=1):
         axes[row_idx, col_idx].imshow(recon_img, cmap='gray_r')
         axes[row_idx, col_idx].set_xticks([])
         axes[row_idx, col_idx].set_yticks([])
-        
-        # Use set_ylabel on the first column subplot to label the reconstruction tiers
         if col_idx == 0:
             axes[row_idx, col_idx].set_ylabel(f"n = {n}", fontsize=12, fontweight='bold', labelpad=15)
 
-# Save output to outputs/pca_reconstructions.png
-print("outputs/pca_reconstructions.png saved in outputs folder")
 plt.tight_layout()
 plt.savefig("outputs/pca_reconstructions.png", bbox_inches='tight', dpi=150)
 plt.close()
-
-# Add a comment: at what n do the digits become clearly recognizable, 
-# and does that match where the variance curve levels off?
-# The digits become clearly recognizable at around n = 15 components. 
-# This aligns perfectly with the variance curve from Question 3, where 13-15 components 
-# capture over 80% of the variance. By the time we reach n = 40, the reconstructions 
-# are nearly identical to the originals, capturing almost all fine details as the 
-# variance curve flattens out completely toward 100%.
+print("outputs/pca_reconstructions.png saved in outputs folder")
+# The digits become clearly recognizable at around n = 15 components. This aligns perfectly with our variance curve leveling off point, where a tiny minority of components capture the vast majority of dataset structures.
 
 print("\nAll warmup exercises complete.")
-# The digits become clearly recognizable at around n = 15 components. This aligns perfectly with our variance curve leveling off point, where a tiny minority of components capture the vast majority of dataset structures.
