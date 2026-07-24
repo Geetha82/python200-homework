@@ -64,12 +64,14 @@ knn_auc = roc_auc_score(y_test, knn_probs)
 print(f"Logistic Regression AUC Score: {log_reg_auc:.4f}")
 print(f"K-Nearest Neighbors AUC Score:  {knn_auc:.4f}")
 
-# Comment: 
-# K-Nearest Neighbors has the higher AUC score (0.9394 vs 0.7060). 
-# This tells us that K-Nearest Neighbors separates the two classes much better 
-# than Logistic Regression. Since AUC measures performance across all possible 
-# classification thresholds, this higher score confirms that KNN has superior 
-# overall discriminative power, independently of any threshold choice.
+# Q1 COMMENT:
+# The K-Nearest Neighbors model has the higher AUC score (0.9394) compared to 
+# the Logistic Regression model (0.8543). This tells us that K-Nearest Neighbors 
+# is fundamentally better at separating the positive and negative classes across 
+# this dataset's feature space. Because AUC is a threshold-independent metric, 
+# this confirms KNN possesses superior overall discriminative power regardless 
+# of what classification threshold is selected in production.
+
 
 # Q2
 print("\n# ROC Question 2")
@@ -101,14 +103,12 @@ plt.close()
 
 print("Saved ROC curve comparison plot to outputs/roc_comparison.png")
 
-# Comment:
-# Looking at the plot at TPR = 0.80:
-# - K-Nearest Neighbors has a much lower FPR (around 0.05).
-# - Logistic Regression has a much higher FPR (around 0.55).
-# 
-# Practically, if you need to catch 80% of true positives, K-Nearest Neighbors 
-# would produce far fewer false alarms (lower FPR) than Logistic Regression.
-
+# Q2 COMMENT:
+# At the exact point on each curve where TPR = 0.80, the K-Nearest Neighbors 
+# model has the lower FPR (approximately 0.05) compared to Logistic Regression 
+# (approximately 0.22). Practically, if an application needs to successfully 
+# catch 80% of true positive cases, K-Nearest Neighbors is the superior choice 
+# because it will produce significantly fewer false alarms (lower false positive rate).
 # Q3
 print("\n# ROC Question 3")
 from sklearn.metrics import f1_score
