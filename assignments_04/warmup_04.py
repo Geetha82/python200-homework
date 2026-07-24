@@ -13,6 +13,7 @@ from sklearn.metrics import (
     roc_auc_score,
     RocCurveDisplay,
     classification_report,
+    f1_score,
 )
 import joblib
 
@@ -34,12 +35,11 @@ X_train, X_test, y_train, y_test = train_test_split(
 )
 
 # ==========================================
-# # --- ROC and AUC ---
+# --- ROC and AUC ---
 # ==========================================
 
-#  Q1
+# --- Q1 ---
 print("# ROC Question 1")
-
 # 1. Scale data for KNN
 scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
@@ -62,23 +62,22 @@ log_reg_auc = roc_auc_score(y_test, log_reg_probs)
 knn_auc = roc_auc_score(y_test, knn_probs)
 
 print(f"Logistic Regression AUC Score: {log_reg_auc:.4f}")
-print(f"K-Nearest Neighbors AUC Score:  {knn_auc:.4f}")
+print(f"K-Nearest Neighbors AUC Score: {knn_auc:.4f}")
 
 # Q1 COMMENT:
-# The K-Nearest Neighbors model has the higher AUC score (0.9394) compared to 
-# the Logistic Regression model (0.8543). This tells us that K-Nearest Neighbors 
-# is fundamentally better at separating the positive and negative classes across 
-# this dataset's feature space. Because AUC is a threshold-independent metric, 
-# this confirms KNN possesses superior overall discriminative power regardless 
-# of what classification threshold is selected in production.
+# Based on the actual printed scores above, the K-Nearest Neighbors model has the higher AUC 
+# score (0.9394) compared to the Logistic Regression model (0.7060). This tells us that 
+# K-Nearest Neighbors is fundamentally better at separating the positive and negative classes 
+# on this dataset. Because AUC evaluates performance across all possible classification cutoffs, 
+# this confirms that KNN possesses superior overall discriminative power independent of any 
+# specific threshold choice.
 
 
-# Q2
+# --- Q2 ---
 print("\n# ROC Question 2")
-
 # Compute ROC curve coordinates
-fpr_log, tpr_log, _ = roc_curve(y_test, log_reg_probs)
-fpr_knn, tpr_knn, _ = roc_curve(y_test, knn_probs)
+fpr_log, tpr_log, thresholds_log = roc_curve(y_test, log_reg_probs)
+fpr_knn, tpr_knn, thresholds_knn = roc_curve(y_test, knn_probs)
 
 # Plot both ROC curves on the same axes
 plt.figure(figsize=(8, 6))
@@ -100,32 +99,31 @@ plt.grid(True, linestyle=":", alpha=0.6)
 # Save to outputs/ directory
 plt.savefig("outputs/roc_comparison.png", dpi=300)
 plt.close()
-
 print("Saved ROC curve comparison plot to outputs/roc_comparison.png")
 
+# Programmatically find exact FPR values at TPR >= 0.80 to ensure justification accuracy
+idx_log = np.where(tpr_log >= 0.80)[0][0]
+idx_knn = np.where(tpr_knn >= 0.80)[0][0]
+print(f"Computed exact values from ROC data -> LogReg FPR at TPR>=0.80: {fpr_log[idx_log]:.4f} | KNN FPR at TPR>=0.80: {fpr_knn[idx_knn]:.4f}")
+
 # Q2 COMMENT:
-# At the exact point on each curve where TPR = 0.80, the K-Nearest Neighbors 
-# model has the lower FPR (approximately 0.05) compared to Logistic Regression 
-# (approximately 0.22). Practically, if an application needs to successfully 
-# catch 80% of true positive cases, K-Nearest Neighbors is the superior choice 
-# because it will produce significantly fewer false alarms (lower false positive rate).
-# Q3
+# At the point on each curve where TPR matches or exceeds 0.80, the K-Nearest Neighbors 
+# model has a significantly lower FPR (0.1100) compared to Logistic Regression (0.5800).
+# These exact values were calculated programmatically from the ROC coordinate arrays.
+# Practically, if an application needs to catch 80% of true positives, K-Nearest 
+# Neighbors is the superior choice because it generates drastically fewer false alarms.
+
+# --- Q3 ---
 print("\n# ROC Question 3")
-from sklearn.metrics import f1_score
-
-# Get fpr, tpr, and thresholds from roc_curve using Logistic Regression probabilities
-fpr_log, tpr_log, thresholds = roc_curve(y_test, log_reg_probs)
-
 best_f1 = -1
 best_thresh = None
 best_tpr = None
 best_fpr = None
 
 # Iterate through each threshold to find the one maximizing F1 score
-for i, threshold in enumerate(thresholds):
+for i, threshold in enumerate(thresholds_log):
     y_pred = (log_reg_probs >= threshold).astype(int)
     current_f1 = f1_score(y_test, y_pred, zero_division=0)
-    
     if current_f1 > best_f1:
         best_f1 = current_f1
         best_thresh = threshold
@@ -133,16 +131,17 @@ for i, threshold in enumerate(thresholds):
         best_fpr = fpr_log[i]
 
 print(f"Optimal Threshold: {best_thresh:.4f}")
-print(f"TPR at Optimum:    {best_tpr:.4f}")
-print(f"FPR at Optimum:    {best_fpr:.4f}")
-print(f"Best F1 Score:     {best_f1:.4f}")
+print(f"TPR at Optimum: {best_tpr:.4f}")
+print(f"FPR at Optimum: {best_fpr:.4f}")
+print(f"Best F1 Score: {best_f1:.4f}")
 
-# Comment: 
-# The optimal threshold (0.2757) is significantly lower than the default 0.5. 
-# In a real application, you would choose a threshold lower than 0.5 when the cost of a 
-# False Negative (missing a positive case) is much higher than the cost of a False 
-# Positive (a false alarm). Examples include medical screenings (missing a disease) 
-# or fraud detection (failing to catch a stolen credit card transaction).
+# Q3 COMMENT:
+# Our threshold grid search programmatically isolated an optimal threshold of 0.2757, which is 
+# significantly lower than the default 0.5 baseline. In a real-world application, choosing a 
+# threshold below 0.5 is ideal when the operational cost of missing a positive case (False Negative) 
+# outweighs the penalty of a false alarm (False Positive), such as flagging rare financial fraud 
+# transactions or running clinical diagnostic screenings.
+
 
 
 # ==========================================
@@ -264,12 +263,12 @@ for params, mean, std in results_summary:
 
 # Comment: 
 # Comparing max_depth: 5 (Mean AUC: 0.9165, Std Dev: 0.0213) and max_depth: 3 
-# (Mean AUC: 0.9024, Std Dev: 0.0191), both show relatively similar mean performance. 
-# If choosing between them based purely on variance, max_depth: 3 is slightly more stable 
-# across folds due to its lower standard deviation (0.0191). 
-# Practically, I would select max_depth: 3 here because it offers comparable accuracy 
-# while being a simpler, shallower tree structure that carries a lower risk of overfitting 
-# and better generalizability.
+# (Mean AUC: 0.9024, Std Dev: 0.0191), both show similar mean performance profiles. 
+# If choosing between them based on variance, max_depth: 3 is slightly more stable 
+# across cross-validation folds due to its lower standard deviation (0.0191). 
+# Practically, max_depth: 3 is the preferred choice because it provides comparable 
+# accuracy while enforcing a simpler tree architecture that limits overfitting risks.
+
 
 # ==========================================
 # # --- Joblib (Save/Load) ---

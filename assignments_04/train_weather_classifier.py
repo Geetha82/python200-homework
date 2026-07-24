@@ -153,15 +153,19 @@ print("Saved evaluation graph to 'outputs/weather_roc.png'")
 # ==========================================
 """
 COMMENT BLOCK - EVALUATION REFLECTION:
-The test AUC score sits at approximately 0.98, showing exceptional model quality. This strong 
-performance is expected because our binary labels are constructed directly from a known combination 
-of the input features, which a Logistic Regression model can easily separate with a clean hyperplane. 
-Looking at the classification report, False Positives (over-recommending bad running days) are slightly 
-more common than False Negatives, given the 0.88 precision on 'Good' days. In practice, this means 
-the app might occasionally tell a runner it is a good day when conditions are just barely past a threshold. 
-Since runners typically prefer safety over false promises, a production app might want to raise the 
-threshold slightly above 0.5 (e.g., to 0.6) to guarantee higher precision for recommended days.
+The independent test AUC score sits at an exceptional 0.9796, 
+indicating an outstandingly high-quality model with near-perfect discriminative capacity.
+This strong performance is entirely expected because our binary 'good_for_running' labels were engineered using deterministic,
+hard-coded rules directly derived from combinations of the four input features, enabling the Logistic Regression algorithm to easily map a highly accurate separating decision hyperplane. 
+Looking closely at the classification report, False Positives (over-recommending an unfavorable day) are notably more common than False Negatives,
+which is driven by the lower precision score of 0.88 on Class 1 ('Good') compared to its 0.92 recall. In a practical deployment context, 
+this skew means the application would frequently exhibit an unsafe bias, 
+over-recommending running to a user when outdoor environmental metrics have actually crossed into uncomfortable or hazardous boundaries. Consequently, 
+if setting the classification threshold for a real-world user application, I would reject the default 0.5 baseline cutoff and systematically scale it upward to approximately 0.70. 
+Raising this threshold artificially forces the pipeline to demand a much higher mathematical certainty before outputting a positive recommendation, 
+thereby drastically optimizing prediction precision, reducing false alarms, and ensuring a safer user experience.
 """
+
 
 
 # ==========================================
