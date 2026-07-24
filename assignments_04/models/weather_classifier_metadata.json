@@ -1,0 +1,19 @@
+{
+    "python_version": "3.12.9 (v3.12.9:fdb81425a9a, Feb  4 2025, 12:21:36) [Clang 13.0.0 (clang-1300.0.29.30)]",
+    "scikit_learn_version": "1.9.0",
+    "feature_names_order": [
+        "temperature_2m_max",
+        "temperature_2m_min",
+        "wind_speed_10m_max"
+    ],
+    "best_hyperparameters": {
+        "lr__C": 10.0
+    },
+    "test_set_auc": 0.9354,
+    "target_city": {
+        "name": "San Francisco, CA",
+        "latitude": 37.7749,
+        "longitude": -122.4194
+    },
+    "label_thresholds_description": "Good running day criteria: max temperature between 10 and 24 \u00b0C; min temperature >= 4 \u00b0C; total daily precipitation < 2.0 mm; and maximum wind speed < 25 km/h."
+}

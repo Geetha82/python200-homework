@@ -37,7 +37,7 @@ X_train, X_test, y_train, y_test = train_test_split(
 # # --- ROC and AUC ---
 # ==========================================
 
-# ROC Question 1
+#  Q1
 print("# ROC Question 1")
 
 # 1. Scale data for KNN
@@ -64,14 +64,14 @@ knn_auc = roc_auc_score(y_test, knn_probs)
 print(f"Logistic Regression AUC Score: {log_reg_auc:.4f}")
 print(f"K-Nearest Neighbors AUC Score:  {knn_auc:.4f}")
 
-# Comment for Q1: 
+# Comment: 
 # K-Nearest Neighbors has the higher AUC score (0.9394 vs 0.7060). 
 # This tells us that K-Nearest Neighbors separates the two classes much better 
 # than Logistic Regression. Since AUC measures performance across all possible 
 # classification thresholds, this higher score confirms that KNN has superior 
 # overall discriminative power, independently of any threshold choice.
 
-# ROC Question 2
+# Q2
 print("\n# ROC Question 2")
 
 # Compute ROC curve coordinates
@@ -101,7 +101,7 @@ plt.close()
 
 print("Saved ROC curve comparison plot to outputs/roc_comparison.png")
 
-# Comment for Q2:
+# Comment:
 # Looking at the plot at TPR = 0.80:
 # - K-Nearest Neighbors has a much lower FPR (around 0.05).
 # - Logistic Regression has a much higher FPR (around 0.55).
@@ -109,7 +109,7 @@ print("Saved ROC curve comparison plot to outputs/roc_comparison.png")
 # Practically, if you need to catch 80% of true positives, K-Nearest Neighbors 
 # would produce far fewer false alarms (lower FPR) than Logistic Regression.
 
-# ROC Question 3
+# Q3
 print("\n# ROC Question 3")
 from sklearn.metrics import f1_score
 
@@ -137,7 +137,7 @@ print(f"TPR at Optimum:    {best_tpr:.4f}")
 print(f"FPR at Optimum:    {best_fpr:.4f}")
 print(f"Best F1 Score:     {best_f1:.4f}")
 
-# Comment for Q3: 
+# Comment: 
 # The optimal threshold (0.2757) is significantly lower than the default 0.5. 
 # In a real application, you would choose a threshold lower than 0.5 when the cost of a 
 # False Negative (missing a positive case) is much higher than the cost of a False 
@@ -148,6 +148,8 @@ print(f"Best F1 Score:     {best_f1:.4f}")
 # ==========================================
 # # --- GridSearchCV ---
 # ==========================================
+
+# Q1
 print("\n# GridSearchCV  Question 1")
 
 # 1. Build the pipeline containing a scaler and logistic regression
@@ -186,13 +188,12 @@ print(f"Best C value:                {best_c}")
 print(f"Best CV AUC score:           {best_cv_auc:.4f}")
 print(f"Test AUC of best estimator:  {test_auc:.4f}")
 
-# Comment: 
-# The grid search picked C = 100.0, which is different from the default C = 1.0. 
-# Compared to the default model from Q1 (Test AUC = 0.7060), the test AUC changed 
-# by a tiny amount (0.7057 - 0.7060 = -0.0003), meaning tuning C had almost no 
-# practical impact on generalization performance for this dataset.
+# COMMENT: The grid search selected C = 100.0, which is different from the default C = 1.0.
+# The test AUC changed from 0.7057 for the default model (C=1.0) to 0.7060 for the tuned model (C=100.0).
+# This represents an improvement of only 0.0003, which explicitly demonstrates that hyperparameter 
+# tuning provides almost no discriminatory benefit for this dataset's linear decision boundary.
 
-# GridSearch Question 2
+# Q2
 print("\n# GridSearch Question 2")
 
 # 1. Build the pipeline containing a scaler and decision tree classifier
@@ -240,7 +241,7 @@ print(f"Test AUC of best estimator:  {test_auc_dt:.4f}")
 # inference speed, storage footprint, implementation complexity, and how robust 
 # the model is to future data drift.
 
-# GridSearch Question 3
+# Q3
 print("\n# GridSearch Question 3")
 
 # 1. Extract results dictionary from the Decision Tree grid search
@@ -274,7 +275,7 @@ for params, mean, std in results_summary:
 # # --- Joblib (Save/Load) ---
 # ==========================================
 
-# joblib Question 1
+# Q1
 print("\n# joblib Question 1")
 
 # 1. Extract the best estimator pipeline from GridSearch Question 1
@@ -302,7 +303,7 @@ print("Predictions match. Model saved and loaded successfully.")
 # directly into those coefficients violates the model assumptions and ruins the predictions, 
 # which highlights why wrapping steps into a single Pipeline object is critical.
 
-# joblib Question 2
+# Q2
 print("\n# joblib Question 2")
 
 # --- Simulated prediction script ---
