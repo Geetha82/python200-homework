@@ -1,0 +1,20 @@
+{
+    "python_version": "3.12.9 (v3.12.9:fdb81425a9a, Feb  4 2025, 12:21:36) [Clang 13.0.0 (clang-1300.0.29.30)]",
+    "scikit_learn_version": "1.9.0",
+    "feature_names_in_order": [
+        "temperature_2m_max",
+        "temperature_2m_min",
+        "precipitation_sum",
+        "wind_speed_10m_max"
+    ],
+    "best_hyperparameters": {
+        "lr__C": 100.0
+    },
+    "holdout_test_auc": 0.9200626959247649,
+    "chosen_location": {
+        "city": "San Francisco, CA",
+        "latitude": 37.7749,
+        "longitude": -122.4194
+    },
+    "label_thresholds_description": "Good for running (Class 1) requires: Daily high temperature between 7\u00b0C and 26\u00b0C, daily low temperature above freezing (>= 0\u00b0C), total daily precipitation under 3.0 mm, and a maximum daily wind speed below 30 km/h. Otherwise labeled Class 0."
+}
