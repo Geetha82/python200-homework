@@ -33,120 +33,112 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42, stratify=y
 )
 
+# ==========================================
 # --- ROC and AUC ---
-# Q1
+# ==========================================
 
-# Train Logistic Regression on raw data
+# # Q1
+print("--- ROC and AUC: Q1 ---")
+# Scale data manually for KNN configuration
+scaler_warmup = StandardScaler()
+X_train_scaled = scaler_warmup.fit_transform(X_train)
+X_test_scaled = scaler_warmup.transform(X_test)
+
+# Train baseline configurations
 lr_model = LogisticRegression(max_iter=1000, random_state=42)
 lr_model.fit(X_train, y_train)
-lr_probs = lr_model.predict_proba(X_test)[:, 1]
-lr_auc = roc_auc_score(y_test, lr_probs)
 
-# Train KNN on scaled data
-knn_pipeline = Pipeline([
-    ('scaler', StandardScaler()),
-    ('knn', KNeighborsClassifier(n_neighbors=5))
-])
-knn_pipeline.fit(X_train, y_train)
-knn_probs = knn_pipeline.predict_proba(X_test)[:, 1]
-knn_auc = roc_auc_score(y_test, knn_probs)
+knn_model = KNeighborsClassifier(n_neighbors=5)
+knn_model.fit(X_train_scaled, y_train)
 
-# Print AUC scores
-print(f"Logistic Regression AUC score: {lr_auc:.4f}")
-print(f"KNN AUC score: {knn_auc:.4f}")
+# Compute predicted probabilities on the test set
+y_probs_lr = lr_model.predict_proba(X_test)[:, 1]
+y_probs_knn = knn_model.predict_proba(X_test_scaled)[:, 1]
 
-# --- ROC and AUC ---
-# Q1 Comment
-# The KNN model has a substantially higher AUC score (0.9394) compared to Logistic Regression (0.7060).
-# This tells us that KNN has a much stronger overall capacity to separate the positive and negative classes.
-# Because AUC evaluates performance across all possible classification thresholds, this conclusion 
-# holds true independently of any specific decision threshold choice.
+# Compute AUC scores
+auc_lr = roc_auc_score(y_test, y_probs_lr)
+auc_knn = roc_auc_score(y_test, y_probs_knn)
 
-# Q2
+print(f"Logistic Regression AUC: {auc_lr:.4f}")
+print(f"KNN AUC: {auc_knn:.4f}")
 
-# Compute ROC curve coordinates
-lr_fpr, lr_tpr, _ = roc_curve(y_test, lr_probs)
-knn_fpr, knn_tpr, _ = roc_curve(y_test, knn_probs)
+# COMMENT: Which model has higher AUC? What does that tell you about which model 
+# better separates the two classes, independently of any threshold choice?
+# ANSWER: The KNeighborsClassifier (KNN) model achieves a substantially higher AUC 
+# score (0.9394) compared to Logistic Regression (0.7060). This demonstrates that 
+# KNN possesses much stronger overall classification and discriminative power on this 
+# dataset. It tells us that KNN is far more capable of cleanly separating the underlying 
+# feature distributions and ranking a randomly selected positive instance higher than a 
+# randomly selected negative instance, completely independent of any specific choice of 
+# operational decision threshold.
 
-# Set up the plot
+# # Q2
+print("\n--- ROC and AUC: Q2 ---")
+fpr_lr, tpr_lr, _ = roc_curve(y_test, y_probs_lr)
+fpr_knn, tpr_knn, _ = roc_curve(y_test, y_probs_knn)
+
 plt.figure(figsize=(8, 6))
-
-# Plot model curves with AUC scores in labels
-plt.plot(lr_fpr, lr_tpr, label=f"Logistic Regression (AUC = {lr_auc:.4f})")
-plt.plot(knn_fpr, knn_tpr, label=f"KNN (AUC = {knn_auc:.4f})")
-
-# Plot the random-classifier diagonal baseline
-plt.plot([0, 1], [0, 1], linestyle="--", color="gray", label="Random Classifier")
-
-# Finalize labels and aesthetics
+plt.plot(fpr_lr, tpr_lr, label=f"Logistic Regression (AUC = {auc_lr:.4f})")
+plt.plot(fpr_knn, tpr_knn, label=f"KNN (AUC = {auc_knn:.4f})")
+plt.plot([0, 1], [0, 1], 'k--', label="Random Classifier")  # Fixed diagonal baseline
 plt.xlabel("False Positive Rate (FPR)")
 plt.ylabel("True Positive Rate (TPR)")
 plt.title("ROC Curve Comparison")
 plt.legend(loc="lower right")
-plt.grid(True, linestyle=":", alpha=0.6)
-
-# Save the plot
-plt.savefig("outputs/roc_comparison.png", dpi=300)
+plt.grid(True)
+plt.savefig("outputs/roc_comparison.png")
 plt.close()
+print("ROC comparison plot saved to outputs/roc_comparison.png")
 
-# Precise array inspection to find exact FPR at TPR = 0.80 using interpolation
-lr_fpr_at_80 = np.interp(0.80, lr_tpr, lr_fpr)
-knn_fpr_at_80 = np.interp(0.80, knn_tpr, knn_fpr)
+# COMMENT: At the point on each curve where TPR = 0.80, which model has the lower FPR? 
+# What does that mean practically — if you needed to catch 80% of positives, which model would produce fewer false alarms?
+# ANSWER: Looking at the horizontal line where TPR = 0.80, the KNN model (orange curve) 
+# has a drastically lower FPR (roughly 0.06) compared to the Logistic Regression model 
+# (blue curve, roughly 0.58). Practically, if your operational requirements dictate 
+# catching 80% of the true positive cases, using the KNN model will produce far fewer 
+# false alarms, minimizing operational noise, unnecessary alert fatigue, and triage costs.
 
-# Print the exact values
-print(f"Exact Logistic Regression FPR at TPR=0.80: {lr_fpr_at_80:.4f}")
-print(f"Exact KNN FPR at TPR=0.80: {knn_fpr_at_80:.4f}")
-
-# --- ROC and AUC ---
-# Q2 Evaluation Comment
-# At the exact operating point where TPR = 0.80:
-# - Logistic Regression has an FPR of 0.5800
-# - KNN has a much lower FPR of 0.0591
-# Practically, the KNN model has the lower FPR at this operating condition.
-# If you need to catch 80% of positives, KNN will produce vastly fewer false alarms 
-# (roughly 6% false positive rate compared to 58% for Logistic Regression).
-
-# Q3
-
-# Compute ROC thresholds
-fpr_lr, tpr_lr, thresholds_lr = roc_curve(y_test, lr_probs)
+# # Q3
+print("\n--- ROC and AUC: Q3 ---")
+fpr, tpr, thresholds = roc_curve(y_test, y_probs_lr)
 
 best_f1 = -1
-best_thresh = None
-best_tpr = None
-best_fpr = None
+opt_thresh = 0.5
+opt_fpr = 0.0
+opt_tpr = 0.0
 
-# Safely evaluate every single threshold returned by roc_curve directly
-for i in range(len(thresholds_lr)):
-    thresh = thresholds_lr[i]
-    
-    # Generate predictions for this specific threshold
-    y_pred = (lr_probs >= thresh).astype(int)
-    current_f1 = f1_score(y_test, y_pred)
-    
-    # Track the global maximum F1 score
-    if current_f1 > best_f1:
-        best_f1 = current_f1
-        best_thresh = thresh
-        best_fpr = fpr_lr[i]
-        best_tpr = tpr_lr[i]
+# Step through thresholds to identify optimum F1
+for thresh in thresholds:
+    if thresh > 1.0:
+        continue
+    y_pred_step = (y_probs_lr >= thresh).astype(int)
+    score = f1_score(y_test, y_pred_step)
+    if score > best_f1:
+        best_f1 = score
+        opt_thresh = thresh
 
-# Print optimization results
-print(f"Optimal Logistic Regression Threshold (Max F1): {best_thresh:.4f}")
-print(f"F1 Score at Optimum: {best_f1:.4f}")
-print(f"TPR at Optimum: {best_tpr:.4f}")
-print(f"FPR at Optimum: {best_fpr:.4f}")
+# Match exact metrics at the chosen optimum index
+idx = np.argmin(np.abs(thresholds - opt_thresh))
+opt_fpr = fpr[idx]
+opt_tpr = tpr[idx]
 
-# --- ROC and AUC ---
-# Q3 Evaluation Comment
-# The optimal threshold of 0.2757 is significantly lower than the default threshold of 0.5.
-# Lowering the threshold to 0.2757 shifts the model's operating point to catch more true positives (TPR = 0.8900),
-# which yields the highest harmonic mean of precision and recall (F1 score = 0.6899) on this dataset.
-# In a real application, you would choose a threshold lower than 0.5 when missing a positive instance 
-# (a False Negative) carries a much higher cost, risk, or penalty than triggering a false alarm (a False Positive).
-# Classical examples include diagnostic medical testing, financial fraud detection, and safety-critical failure alerts.
+print(f"Optimal Threshold: {opt_thresh:.4f}")
+print(f"TPR at Optimum: {opt_tpr:.4f}")
+print(f"FPR at Optimum: {opt_fpr:.4f}")
+print(f"F1 at Optimum: {best_f1:.4f}")
 
-# --- GridSearchCV ---
+# COMMENT: how does this optimal threshold compare to the default 0.5? In a real application, 
+# when would you choose a threshold lower than 0.5?
+# ANSWER: The optimal threshold found is 0.2757, which is significantly lower than the 
+# default 0.5 baseline. This lower threshold yields a high TPR of 0.8900 at the expense of a 
+# high FPR of 0.6900 to maximize the overall balanced F1 score (0.6899) for this linear model. 
+# In a real-world application, you intentionally choose a threshold below 0.5 whenever the cost 
+# or penalty of missing a positive case (a False Negative) is far worse than generating a false 
+# alarm (a False Positive). Examples include medical diagnoses (e.g., screening for a critical illness) 
+# or fraud detection systems, where it is vital to flag potential positives aggressively.
+
+
+
 # GridSearch Q1
 
 # Define the pipeline with scaling and logistic regression
