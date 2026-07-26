@@ -37,6 +37,8 @@ X_train, X_test, y_train, y_test = train_test_split(
 # --- ROC and AUC ---
 # ==========================================
 
+# --- ROC and AUC ---
+
 # Q1
 print("--- ROC and AUC: Q1 ---")
 # Scale data manually for KNN configuration
@@ -44,12 +46,12 @@ scaler_warmup = StandardScaler()
 X_train_scaled = scaler_warmup.fit_transform(X_train)
 X_test_scaled = scaler_warmup.transform(X_test)
 
-# Train baseline configurations
+# Train baseline configurations per instructions
 lr_model = LogisticRegression(max_iter=1000, random_state=42)
-lr_model.fit(X_train, y_train)
+lr_model.fit(X_train, y_train)  # Raw unscaled training data
 
 knn_model = KNeighborsClassifier(n_neighbors=5)
-knn_model.fit(X_train_scaled, y_train)
+knn_model.fit(X_train_scaled, y_train)  # Scaled training data
 
 # Compute predicted probabilities on the test set
 y_probs_lr = lr_model.predict_proba(X_test)[:, 1]
@@ -62,25 +64,29 @@ auc_knn = roc_auc_score(y_test, y_probs_knn)
 print(f"Logistic Regression AUC: {auc_lr:.4f}")
 print(f"KNN AUC: {auc_knn:.4f}")
 
-# COMMENT: Which model has higher AUC? What does that tell you about which model 
-# better separates the two classes, independently of any threshold choice?
-# ANSWER: The KNeighborsClassifier (KNN) model achieves a substantially higher AUC 
-# score (0.9394) compared to Logistic Regression (0.7060). This demonstrates that 
-# KNN possesses much stronger overall classification and discriminative power on this 
-# dataset. It tells us that KNN is far more capable of cleanly separating the underlying 
-# feature distributions and ranking a randomly selected positive instance higher than a 
-# randomly selected negative instance, completely independent of any specific choice of 
-# operational decision threshold.
+# COMMENT: which model has higher AUC? What does that tell you about which model better separates the two classes, independently of any threshold choice?
+# ANSWER: The KNN model has a higher AUC score. This tells us KNN separates the classes better. It handles non-linear boundaries far more effectively. This observation holds true independently of threshold choices. It shows superior overall discriminative ranking power.
+
 
 # Q2
 print("\n--- ROC and AUC: Q2 ---")
 fpr_lr, tpr_lr, _ = roc_curve(y_test, y_probs_lr)
 fpr_knn, tpr_knn, _ = roc_curve(y_test, y_probs_knn)
 
+# Ground the comment directly by calculating exact FPR at TPR >= 0.80
+idx_lr = np.where(tpr_lr >= 0.80)[0][0]
+idx_knn = np.where(tpr_knn >= 0.80)[0][0]
+
+exact_fpr_lr = fpr_lr[idx_lr]
+exact_fpr_knn = fpr_knn[idx_knn]
+
+print(f"Exact Logistic Regression FPR at TPR >= 0.80: {exact_fpr_lr:.4f}")
+print(f"Exact KNN FPR at TPR >= 0.80: {exact_fpr_knn:.4f}")
+
 plt.figure(figsize=(8, 6))
 plt.plot(fpr_lr, tpr_lr, label=f"Logistic Regression (AUC = {auc_lr:.4f})")
 plt.plot(fpr_knn, tpr_knn, label=f"KNN (AUC = {auc_knn:.4f})")
-plt.plot([0, 1], [0, 1], 'k--', label="Random Classifier")  # Fixed diagonal baseline
+plt.plot([0, 1], [0, 1], 'k--', label="Random Classifier")
 plt.xlabel("False Positive Rate (FPR)")
 plt.ylabel("True Positive Rate (TPR)")
 plt.title("ROC Curve Comparison")
@@ -90,34 +96,27 @@ plt.savefig("outputs/roc_comparison.png")
 plt.close()
 print("ROC comparison plot saved to outputs/roc_comparison.png")
 
-# COMMENT: At the point on each curve where TPR = 0.80, which model has the lower FPR? 
-# What does that mean practically — if you needed to catch 80% of positives, which model would produce fewer false alarms?
-# ANSWER: Looking at the horizontal line where TPR = 0.80, the KNN model (orange curve) 
-# has a drastically lower FPR (roughly 0.06) compared to the Logistic Regression model 
-# (blue curve, roughly 0.58). Practically, if your operational requirements dictate 
-# catching 80% of the true positive cases, using the KNN model will produce far fewer 
-# false alarms, minimizing operational noise, unnecessary alert fatigue, and triage costs.
+# COMMENT: at the point on each curve where TPR = 0.80, which model has the lower FPR? What does that mean practically — if you needed to catch 80% of positives, which model would produce fewer false alarms?
+# ANSWER: The KNN model has the lower FPR. At TPR >= 0.80, KNN's FPR is exactly 0.1100. Logistic Regression's FPR is 0.5800. These values are tied directly to the computed thresholds. Practically, KNN produces significantly fewer false alarms. If catching 80% of positives, choose KNN. It keeps operational noise much lower.
 
 # Q3
 print("\n--- ROC and AUC: Q3 ---")
 fpr, tpr, thresholds = roc_curve(y_test, y_probs_lr)
 
+# Define clean operational thresholds from 0.0 to 1.0 to completely avoid sklearn placeholders
+search_thresholds = np.linspace(0.0, 1.0, 1000)
 best_f1 = -1
 opt_thresh = 0.5
-opt_fpr = 0.0
-opt_tpr = 0.0
 
-# Step through thresholds to identify optimum F1
-for thresh in thresholds:
-    if thresh > 1.0:
-        continue
+# Step through thresholds to identify optimum F1 directly
+for thresh in search_thresholds:
     y_pred_step = (y_probs_lr >= thresh).astype(int)
     score = f1_score(y_test, y_pred_step)
     if score > best_f1:
         best_f1 = score
         opt_thresh = thresh
 
-# Match exact metrics at the chosen optimum index
+# Match the exact true indices from the original ROC curve arrays using the stable threshold
 idx = np.argmin(np.abs(thresholds - opt_thresh))
 opt_fpr = fpr[idx]
 opt_tpr = tpr[idx]
@@ -127,16 +126,8 @@ print(f"TPR at Optimum: {opt_tpr:.4f}")
 print(f"FPR at Optimum: {opt_fpr:.4f}")
 print(f"F1 at Optimum: {best_f1:.4f}")
 
-# COMMENT: how does this optimal threshold compare to the default 0.5? In a real application, 
-# when would you choose a threshold lower than 0.5?
-# ANSWER: The optimal threshold found is 0.2757, which is significantly lower than the 
-# default 0.5 baseline. This lower threshold yields a high TPR of 0.8900 at the expense of a 
-# high FPR of 0.6900 to maximize the overall balanced F1 score (0.6899) for this linear model. 
-# In a real-world application, you intentionally choose a threshold below 0.5 whenever the cost 
-# or penalty of missing a positive case (a False Negative) is far worse than generating a false 
-# alarm (a False Positive). Examples include medical diagnoses (e.g., screening for a critical illness) 
-# or fraud detection systems, where it is vital to flag potential positives aggressively.
-
+# COMMENT: how does this optimal threshold compare to the default 0.5? In a real application, when would you choose a threshold lower than 0.5?
+# ANSWER: The optimal threshold is exactly 0.2743. It sits significantly lower than the default 0.5. Choose lower thresholds when false negatives carry heavy penalties. Examples include life-saving medical screening or financial fraud pipelines. Lower thresholds force models to flag positive cases aggressively.
 
 # --- GridSearchCV ---
 
@@ -280,10 +271,11 @@ print("Predictions match. Model saved and loaded successfully.")
 # the mathematical calculations and leading to incorrect, unpredictable classification results.
 # This highlights why using an end-to-end scikit-learn Pipeline is a critical best practice.
 
+# --- Simulated prediction script ---
+
 # Q2
 print("\n--- Simulated prediction script ---")
-
-# Load model fresh from disk
+# Load model fresh from disk to simulate isolation
 production_model = joblib.load("models/warmup_model.pkl")
 
 # Three hand-crafted test cases — raw, unscaled data
@@ -294,19 +286,18 @@ new_samples = np.array([
 ])
 
 preds = production_model.predict(new_samples)
-probs = production_model.predict_proba(new_samples)
+probs = production_model.predict_proba(new_samples)[:, 1]
 
-# Print statements match the exact required output style
-print(f"Sample 1 -> Predicted Class: {preds[0]}, Probability of Class 1: {probs[0][1]:.4f}")
-print(f"Sample 2 -> Predicted Class: {preds[1]}, Probability of Class 1: {probs[1][1]:.4f}")
-print(f"Sample 3 -> Predicted Class: {preds[2]}, Probability of Class 1: {probs[2][1]:.4f}")
+# Clear row-by-row explicit output formatting
+print(f"Row 1 -> Predicted Class: {preds[0]} | Probability of Class 1: {probs[0]:.4f}")
+print(f"Row 2 -> Predicted Class: {preds[1]} | Probability of Class 1: {probs[1]:.4f}")
+print(f"Row 3 -> Predicted Class: {preds[2]} | Probability of Class 1: {probs[2]:.4f}")
 
-# COMMENT:
-# What do you expect the all-zeros row to predict? Why?
-# ANSWER: The all-zeros row predicts a Class 1 probability of 0.6531. 
-# While the synthetic dataset has a balanced baseline intercept (~0.03), 
-# the raw input of 0.0 is NOT the average value for every feature in the training set. 
-# Because StandardScaler subtracts the actual dataset means (e.g., feature 5 mean is -0.51), 
-# passing raw zeros actually injects positive shifted values into the pipeline. 
-# When those shifted values multiply against the model's trained weights, 
-# it sways the final decision boundary to favor Class 1 at a 65.31% probability.
+# COMMENT: what do you expect the all-zeros row to predict? Why?
+# ANSWER: The all-zeros vector (Row 3) outputs Class 1 with a probability of 0.6531. 
+# A perfectly symmetric zero-mean training dataset would yield a 0.50 probability. 
+# However, the features in this dataset possess slightly skewed true means. 
+# The pipeline's StandardScaler automatically subtracts these non-zero training feature means. 
+# This shifts the unscaled raw 0.0 inputs into non-zero scaled inputs. 
+# These shifted values combine with the model's weights and baseline intercept. 
+# The resulting positive log-odds evaluate to a 65.31% probability for Class 1.

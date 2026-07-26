@@ -90,15 +90,14 @@ for i in range(len(hypothetical_days)):
     print("-" * 70)
 
 # --- Task 3: Reflection ---
-"""
-REFLECTION COMMENT:
 
-1. Borderline and Extreme Case Analysis:
-Day 3 highlights a severe mathematical limitation of linear classifiers. Despite being a freezing day (3.0°C Max / -4.0°C Min), the model outputs a 99.98% probability of being GOOD. This happens because Logistic Regression relies on linear combinations of features and cannot naturally create bounded 'if-else' box constraints (like our strict >= 4.0°C minimum temperature rule). It extrapolates the lower temperature values to mean an increasingly ideal running environment, entirely missing the safety floor cutoff. For a true borderline day showing a 0.52 probability, the production app should display a 'Marginal Conditions' status flag to the user rather than forcing a blunt binary decision.
+# REFLECTION COMMENT:
 
-2. Workflow Disconnection:
-Running 'predict_weather.py' before 'train_weather_classifier.py' breaks the execution chain because the underlying serialized .pkl pipeline and .json metadata companion artifacts do not exist on disk yet. To improve user experience, this script uses an upfront os.path.exists check to catch missing dependencies early, hide raw unhandled Python tracebacks, and print clean instructions to run training first.
+# 1. Borderline and Extreme Case Analysis:
+# Day 3 highlights a severe mathematical limitation of linear classifiers. Despite being a freezing day (3.0°C Max / -4.0°C Min), the model outputs a 99.98% probability of being GOOD. This happens because Logistic Regression relies on linear combinations of features and cannot naturally create bounded 'if-else' box constraints (like our strict >= 4.0°C minimum temperature rule). It extrapolates the lower temperature values to mean an increasingly ideal running environment, entirely missing the safety floor cutoff. For a true borderline day showing a 0.52 probability, the production app should display a 'Marginal Conditions' status flag to the user rather than forcing a blunt binary decision.
 
-3. Production Scaling:
-To scale this script into a production service capable of serving daily forecast predictions, we must replace the static, hard-coded hypothetical DataFrame with a dynamic data-fetching step. Every morning, the script would make a live HTTP request targeting the 7-day or tomorrow forecast endpoint of the Open-Meteo API. The incoming JSON response must then be converted into a pandas DataFrame that strictly enforces the same feature schema order found in the metadata file: 'temperature_2m_max', 'temperature_2m_min', 'precipitation_sum', and 'wind_speed_10m_max'. Preserving this identical column order and structural data schema ensures that the live forecast data aligns perfectly with the model coefficients without throwing matrix dimension errors or corrupting calculations during inference. Finally, we would schedule this script to run automatically using an orchestrator like Airflow or a cron job, sending the final labels directly to an external database or user notification webhook.
-"""
+# 2. Workflow Disconnection:
+# Running 'predict_weather.py' before 'train_weather_classifier.py' breaks the execution chain because the underlying serialized .pkl pipeline and .json metadata companion artifacts do not exist on disk yet. To improve user experience, this script uses an upfront os.path.exists check to catch missing dependencies early, hide raw unhandled Python tracebacks, and print clean instructions to run training first.
+
+# 3. Production Scaling:
+# To scale this script into a production service capable of serving daily forecast predictions, we must replace the static, hard-coded hypothetical DataFrame with a dynamic data-fetching step. Every morning, the script would make a live HTTP request targeting the 7-day or tomorrow forecast endpoint of the Open-Meteo API. The incoming JSON response must then be converted into a pandas DataFrame that strictly enforces the same feature schema order found in the metadata file: 'temperature_2m_max', 'temperature_2m_min', 'precipitation_sum', and 'wind_speed_10m_max'. Preserving this identical column order and structural data schema ensures that the live forecast data aligns perfectly with the model coefficients without throwing matrix dimension errors or corrupting calculations during inference. Finally, we would schedule this script to run automatically using an orchestrator like Airflow or a cron job, sending the final labels directly to an external database or user notification webhook.

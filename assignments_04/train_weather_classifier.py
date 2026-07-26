@@ -165,7 +165,15 @@ print("Saved ROC curve to outputs/weather_roc.png")
 # --- Step 4: Reflect on Evaluation ---
 
 # COMMENT: Reflections on Evaluation Model Performance
-# ANSWER: The model achieves an exceptionally strong test AUC score above 0.95, which tells us that the overall quality of our classifier is outstanding. This high score is expected because our target label was engineered directly using deterministic thresholds of the input features themselves, making it straightforward for a linear classifier to map out the standardized feature contributions. Looking at the classification report, False Negatives tend to be slightly more common because the model takes a conservative approach around boundary limits, occasionally marking safe but brisk or cloudy days as unfavorable. In a real workout application, I would prefer the app to under-recommend running rather than over-recommend it, because sending a user out into a freezing rainstorm or unsafe gusts immediately destroys brand trust, whereas missing a marginally acceptable running day is harmless. If setting the threshold for a production app, I would skip the default 0.50 cutoff and increase it to roughly 0.65 to ensure a premium, predictable outdoor user experience.
+# ANSWER: The model achieves an excellent test AUC score. It sits comfortably above the 0.95 mark. 
+# This score indicates outstanding overall classification quality. The performance is expected and reasonable. 
+# The target was engineered directly from features. Thus, the model maps boundaries easily. 
+# False Negatives are the most common error. The model acts conservatively near decision boundaries. 
+# It occasionally flags marginal days as unfavorable. Practically, the app will under-recommend workouts. 
+# This behavior is ideal for user retention. Recommending a run during a storm ruins trust. 
+# Missing a mildly brisk day is harmless. Therefore, I would reject the default 0.5 threshold. 
+# I would increase it to roughly 0.65. This change prioritizes safety and guarantees a premium experience.
+
 
 # --- Step 5: Save the Model ---
 print("\n--- Step 5: Serializing Model and Documenting Metadata ---")
