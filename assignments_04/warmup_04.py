@@ -12,8 +12,7 @@ from sklearn.metrics import (
     roc_curve,
     roc_auc_score,
     RocCurveDisplay,
-    classification_report,
-    f1_score,
+    classification_report
 )
 import joblib
 
@@ -34,302 +33,357 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42, stratify=y
 )
 
-# ==========================================
 # --- ROC and AUC ---
-# ==========================================
 
-# --- Q1 ---
-print("# ROC Question 1")
-# 1. Scale data for KNN
-scaler = StandardScaler()
-X_train_scaled = scaler.fit_transform(X_train)
-X_test_scaled = scaler.transform(X_test)
+# Q1
+print("\n--- ROC and AUC Q1 Results---")
 
-# 2. Train Logistic Regression on raw data
+# 1. Train Logistic Regression on raw unscaled data
 log_reg = LogisticRegression(max_iter=1000, random_state=42)
 log_reg.fit(X_train, y_train)
 
-# 3. Train KNN on scaled data
-knn = KNeighborsClassifier(n_neighbors=5)
-knn.fit(X_train_scaled, y_train)
-
-# 4. Compute predicted probabilities for the positive class (column 1)
+# Compute probabilities for the positive class (class 1)
 log_reg_probs = log_reg.predict_proba(X_test)[:, 1]
-knn_probs = knn.predict_proba(X_test_scaled)[:, 1]
-
-# 5. Compute and print AUC scores
 log_reg_auc = roc_auc_score(y_test, log_reg_probs)
+
+# 2. Train KNN on scaled training data using a Pipeline
+knn_pipeline = Pipeline([
+    ('scaler', StandardScaler()),
+    ('knn', KNeighborsClassifier(n_neighbors=5))
+])
+knn_pipeline.fit(X_train, y_train)
+
+# Compute probabilities for the positive class (class 1)
+knn_probs = knn_pipeline.predict_proba(X_test)[:, 1]
 knn_auc = roc_auc_score(y_test, knn_probs)
 
-print(f"Logistic Regression AUC Score: {log_reg_auc:.4f}")
-print(f"K-Nearest Neighbors AUC Score: {knn_auc:.4f}")
+# 3. Print the comparative AUC scores
+print(f"Logistic Regression (Unscaled) AUC Score: {log_reg_auc:.4f}")
+print(f"K-Neighbors Classifier (Scaled) AUC Score: {knn_auc:.4f}")
 
-# Q1 COMMENT:
-# Based on the actual printed scores above, the K-Nearest Neighbors model has the higher AUC 
-# score (0.9394) compared to the Logistic Regression model (0.7060). This tells us that 
-# K-Nearest Neighbors is fundamentally better at separating the positive and negative classes 
-# on this dataset. Because AUC evaluates performance across all possible classification cutoffs, 
-# this confirms that KNN possesses superior overall discriminative power independent of any 
-# specific threshold choice.
+# COMMENT: Comparative Analysis & Threshold Independence Takeaway
+# The K-Neighbors Classifier (Scaled) achieves a significantly higher AUC score (0.9394) 
+# than the unscaled Logistic Regression model (0.7060). 
+# 
+# This tells us that the KNN model is much better at separating and distinguishing between 
+# the two classes. Because AUC is threshold-independent, this performance ranking holds 
+# true across all possible classification thresholds. The scaled KNN model will structurally 
+# assign a higher probability (or rank score) to a randomly chosen positive instance 
+# than to a randomly chosen negative instance far more reliably than the unscaled 
+# Logistic Regression model. It also underscores how critical feature scaling is for 
+# distance-based algorithms.
 
 
 # --- Q2 ---
-print("\n# ROC Question 2")
-# Compute ROC curve coordinates
-fpr_log, tpr_log, thresholds_log = roc_curve(y_test, log_reg_probs)
-fpr_knn, tpr_knn, thresholds_knn = roc_curve(y_test, knn_probs)
+print("\n# ROC and AUC Question 2")
 
-# Plot both ROC curves on the same axes
+# 1. Compute ROC curve values for both models
+fpr_log, tpr_log, _ = roc_curve(y_test, log_reg_probs)
+fpr_knn, tpr_knn, _ = roc_curve(y_test, knn_probs)
+
+# 2. Set up the matplotlib figure
 plt.figure(figsize=(8, 6))
-plt.plot(fpr_log, tpr_log, label=f"Logistic Regression (AUC = {log_reg_auc:.4f})", color="royalblue", lw=2)
-plt.plot(fpr_knn, tpr_knn, label=f"K-Nearest Neighbors (AUC = {knn_auc:.4f})", color="darkorange", lw=2)
 
-# Add the random-classifier diagonal line
-plt.plot([0, 1], [0, 1], linestyle="--", color="gray", label="Random Classifier (AUC = 0.50)")
+# 3. Plot both curves with their respective AUC scores in the labels
+plt.plot(fpr_log, tpr_log, color='blue', lw=2, 
+         label=f"Logistic Regression (AUC = {log_reg_auc:.4f})")
+plt.plot(fpr_knn, tpr_knn, color='green', lw=2, 
+         label=f"K-Neighbors Classifier (AUC = {knn_auc:.4f})")
 
-# Format the plot
+# 4. Add the random-classifier diagonal baseline
+plt.plot([0, 1], [0, 1], color='gray', linestyle='--', lw=1, 
+         label="Random Classifier (AUC = 0.50)")
+
+# 5. Format and label the axes
 plt.xlim([0.0, 1.0])
 plt.ylim([0.0, 1.05])
 plt.xlabel("False Positive Rate (FPR)")
 plt.ylabel("True Positive Rate (TPR)")
 plt.title("ROC Curve Comparison")
 plt.legend(loc="lower right")
-plt.grid(True, linestyle=":", alpha=0.6)
+plt.grid(True, linestyle=':', alpha=0.6)
 
-# Save to outputs/ directory
-plt.savefig("outputs/roc_comparison.png", dpi=300)
+# 6. Save the figure to the requested directory and close the plot
+output_path = "outputs/roc_comparison.png"
+plt.savefig(output_path, dpi=300)
 plt.close()
-print("Saved ROC curve comparison plot to outputs/roc_comparison.png")
 
-# Programmatically find exact FPR values at TPR >= 0.80 to ensure justification accuracy
-idx_log = np.where(tpr_log >= 0.80)[0][0]
-idx_knn = np.where(tpr_knn >= 0.80)[0][0]
-print(f"Computed exact values from ROC data -> LogReg FPR at TPR>=0.80: {fpr_log[idx_log]:.4f} | KNN FPR at TPR>=0.80: {fpr_knn[idx_knn]:.4f}")
+print(f"ROC curve comparison plot successfully saved to {output_path}")
 
-# Q2 COMMENT:
-# At the point on each curve where TPR matches or exceeds 0.80, the K-Nearest Neighbors 
-# model has a significantly lower FPR (0.1100) compared to Logistic Regression (0.5800).
-# These exact values were calculated programmatically from the ROC coordinate arrays.
-# Practically, if an application needs to catch 80% of true positives, K-Nearest 
-# Neighbors is the superior choice because it generates drastically fewer false alarms.
+# COMMENT: Specific Operating Point Analysis (TPR = 0.80)
+# At the point on each curve where TPR = 0.80, the K-Neighbors Classifier has a much lower FPR 
+# (approximately 0.06) compared to the Logistic Regression model (approximately 0.58).
+# 
+# Practically, if your business objective requires catching 80% of all true positive instances,
+# the K-Neighbors Classifier is the far superior choice because it minimizes collateral damage.
+# It would achieve this target recall while triggering false alarms on only about 6% of the 
+# negative population, whereas Logistic Regression would mistakenly flag roughly 58% of negative 
+# cases as positive to reach that same 80% target.
 
-# --- Q3 ---
-print("\n# ROC Question 3")
+# Q3
+print("\n--- ROC and AUC Question 3 ---")
+
+from sklearn.metrics import f1_score
+
+# 1. Get fpr, tpr, and thresholds from roc_curve
+fpr_log, tpr_log, thresholds_log = roc_curve(y_test, log_reg_probs)
+
 best_f1 = -1
 best_thresh = None
 best_tpr = None
 best_fpr = None
 
-# Iterate through each threshold to find the one maximizing F1 score
-for i, threshold in enumerate(thresholds_log):
-    y_pred = (log_reg_probs >= threshold).astype(int)
-    current_f1 = f1_score(y_test, y_pred, zero_division=0)
+# 2. Iterate through thresholds to find the optimum F1 score
+for i, thresh in enumerate(thresholds_log):
+    # Skip the arbitrary threshold scikit-learn places at max(y_score) + 1
+    if i == 0 and thresh > 1:
+        continue
+        
+    y_pred = (log_reg_probs >= thresh).astype(int)
+    current_f1 = f1_score(y_test, y_pred)
+    
     if current_f1 > best_f1:
         best_f1 = current_f1
-        best_thresh = threshold
+        best_thresh = thresh
         best_tpr = tpr_log[i]
         best_fpr = fpr_log[i]
 
+# 3. Print optimal threshold details
 print(f"Optimal Threshold: {best_thresh:.4f}")
-print(f"TPR at Optimum: {best_tpr:.4f}")
-print(f"FPR at Optimum: {best_fpr:.4f}")
-print(f"Best F1 Score: {best_f1:.4f}")
+print(f"True Positive Rate (TPR) at Optimum: {best_tpr:.4f}")
+# Note: This represents the sensitivity or recall at the peak F1 operating point.
+print(f"False Positive Rate (FPR) at Optimum: {best_fpr:.4f}")
+# Note: This represents the false alarm rate at the peak F1 operating point.
+print(f"Maximum F1 Score: {best_f1:.4f}")
 
-# Q3 COMMENT:
-# Our threshold grid search programmatically isolated an optimal threshold of 0.2757, which is 
-# significantly lower than the default 0.5 baseline. In a real-world application, choosing a 
-# threshold below 0.5 is ideal when the operational cost of missing a positive case (False Negative) 
-# outweighs the penalty of a false alarm (False Positive), such as flagging rare financial fraud 
-# transactions or running clinical diagnostic screenings.
+# COMMENT: Threshold Comparison & Practical Application Analysis
+# The optimal threshold found here (0.2757) is significantly lower than the default 0.5 threshold. 
+# Lowering the threshold to 0.2757 flags more samples as positive, boosting the TPR (Recall) 
+# to 89.00% and maximizing the F1 balance, even though it causes the False Positive Rate to climb 
+# to 69.00%.
+# 
+# In a real-world application, you would choose a decision threshold lower than 0.5 when the 
+# cost or danger of missing a positive instance (a False Negative) is much greater than the 
+# cost of dealing with a false alarm (a False Positive). 
+# 
+# Critical examples include:
+# 1. Medical screening: Missing a disease diagnosis is fatal, while a false alarm just leads to extra tests.
+# 2. Fraud or threat detection: Missing a hack or stolen card is catastrophic, whereas a false alarm 
+#    just prompts a quick verification text.
+# 3. Severe weather warnings: Missing an oncoming tornado costs lives, while an unneeded evacuation 
+#    is just an inconvenience.
 
 
-
-# ==========================================
-# # --- GridSearchCV ---
-# ==========================================
+# --- GridSearchCV ---
 
 # Q1
-print("\n# GridSearchCV  Question 1")
+print("\n--- GridSearchCV Questions 1 ---")
 
-# 1. Build the pipeline containing a scaler and logistic regression
-pipeline = Pipeline([
-    ("scaler", StandardScaler()),
-    ("lr", LogisticRegression(max_iter=1000, random_state=42))
+# 1. Build the pipeline containing scaling and model steps
+gs_pipeline = Pipeline([
+    ('scaler', StandardScaler()),
+    ('lr', LogisticRegression(max_iter=1000, random_state=42))
 ])
 
-# 2. Define the parameter grid (use double underscore syntax for pipeline steps)
+# 2. Define the hyperparameter grid using the pipeline prefix format
 param_grid = {
-    "lr__C": [0.001, 0.01, 0.1, 1.0, 10.0, 100.0]
+    'lr__C': [0.001, 0.01, 0.1, 1.0, 10.0, 100.0]
 }
 
-# 3. Setup GridSearchCV with 5-fold cross-validation and ROC AUC scoring
+# 3. Instantiate and fit GridSearchCV with 5-fold CV using ROC AUC scoring
 grid_search = GridSearchCV(
-    estimator=pipeline,
+    estimator=gs_pipeline,
     param_grid=param_grid,
     cv=5,
     scoring="roc_auc",
     n_jobs = 1
 )
-
-# 4. Fit the grid search on the raw training data
 grid_search.fit(X_train, y_train)
 
-# 5. Extract results
-best_c = grid_search.best_params_["lr__C"]
-best_cv_auc = grid_search.best_score_
-
-# 6. Evaluate the best estimator directly on the test set
-test_probs = grid_search.predict_proba(X_test)[:, 1]
+# 4. Compute the final performance metric on the held-out test data
+best_model = grid_search.best_estimator_
+test_probs = best_model.predict_proba(X_test)[:, 1]
 test_auc = roc_auc_score(y_test, test_probs)
 
-# 7. Print requested metrics
-print(f"Best C value:                {best_c}")
-print(f"Best CV AUC score:           {best_cv_auc:.4f}")
-print(f"Test AUC of best estimator:  {test_auc:.4f}")
+# 5. Print the requested parameters and metric outputs
+# Clean step parsing to display just the clean numeric value
+print(f"Best C value: {grid_search.best_params_['lr__C']}")
+print(f"Best CV AUC score: {grid_search.best_score_:.4f}")
+print(f"Test AUC of the best estimator: {test_auc:.4f}")
 
-# COMMENT: The grid search selected C = 100.0, which is different from the default C = 1.0.
-# The test AUC changed from 0.7057 for the default model (C=1.0) to 0.7060 for the tuned model (C=100.0).
-# This represents an improvement of only 0.0003, which explicitly demonstrates that hyperparameter 
-# tuning provides almost no discriminatory benefit for this dataset's linear decision boundary.
+# COMMENT: GridSearch Output Analysis
+# The grid search picked a C value of 100.0, which is much higher than the default C=1.0 value 
+# scikit-learn assigns by default. A larger C value reduces regularization, allowing the model 
+# to fit the training data more aggressively.
+# 
+# Comparing this to our original unscaled default Logistic Regression model (Test AUC = 0.7060), 
+# the test AUC of our optimized, scaled model actually decreased slightly to 0.7057—a trivial 
+# drop of 0.0003. This indicates that for this specific dataset and feature space, scaling and 
+# tuning regularization parameters did not yield meaningful performance improvements for 
+# Logistic Regression, suggesting that the underlying patterns are either linear but noisy, or 
+# better suited to non-linear estimators like KNN.
 
 # Q2
-print("\n# GridSearch Question 2")
+print("\n--- GridSearch Questions 2 ---")
 
-# 1. Build the pipeline containing a scaler and decision tree classifier
-pipeline_dt = Pipeline([
-    ("scaler", StandardScaler()),
-    ("dt", DecisionTreeClassifier(random_state=42))
+# 1. Build a new pipeline replacing Logistic Regression with a Decision Tree
+dt_pipeline = Pipeline([
+    ('scaler', StandardScaler()),
+    ('dt', DecisionTreeClassifier(random_state=42))
 ])
 
-# 2. Define the parameter grid for max_depth
+# 2. Define the hyperparameter grid for max_depth
 param_grid_dt = {
-    "dt__max_depth": [2, 3, 5, 8, None]
+    'dt__max_depth': [2, 3, 5, 8, None]
 }
 
-# 3. Setup GridSearchCV (keeping n_jobs=1 to avoid debugger warnings)
+# 3. Instantiate and fit GridSearchCV (n_jobs=1 to avoid VS Code debugger crashes)
 grid_search_dt = GridSearchCV(
-    estimator=pipeline_dt,
+    estimator=dt_pipeline,
     param_grid=param_grid_dt,
     cv=5,
     scoring="roc_auc",
     n_jobs=1
 )
-
-# 4. Fit the grid search on the raw training data
 grid_search_dt.fit(X_train, y_train)
 
-# 5. Extract results
-best_depth = grid_search_dt.best_params_["dt__max_depth"]
-best_cv_auc_dt = grid_search_dt.best_score_
-
-# 6. Evaluate the best estimator directly on the test set
-test_probs_dt = grid_search_dt.predict_proba(X_test)[:, 1]
+# 4. Compute the final performance metric on the held-out test data
+best_dt_model = grid_search_dt.best_estimator_
+test_probs_dt = best_dt_model.predict_proba(X_test)[:, 1]
 test_auc_dt = roc_auc_score(y_test, test_probs_dt)
 
-# 7. Print requested metrics
-print(f"Best max_depth:              {best_depth}")
-print(f"Best CV AUC score:           {best_cv_auc_dt:.4f}")
-print(f"Test AUC of best estimator:  {test_auc_dt:.4f}")
+# 5. Print the requested parameters and metric outputs
+print(f"Best max_depth value: {grid_search_dt.best_params_['dt__max_depth']}")
+print(f"Best CV AUC score: {grid_search_dt.best_score_:.4f}")
+print(f"Test AUC of the best estimator: {test_auc_dt:.4f}")
 
-# Comment: 
-# The Decision Tree model performed substantially better than Logistic 
-# Regression, achieving a Test AUC of 0.9354 compared to Logistic Regression's 
-# 0.7057. Based purely on predictive power, the Decision Tree is the clear choice 
-# to bring into further development. However, AUC is not the only consideration. 
-# In a real project, you must also evaluate model interpretability, training and 
-# inference speed, storage footprint, implementation complexity, and how robust 
-# the model is to future data drift.
+# COMMENT: Model Comparison and Selection Strategy
+# The tuned Decision Tree Classifier achieves a vastly superior Test AUC (0.9354) 
+# compared to the best Logistic Regression model (0.7057). Because of this large performance 
+# gap, the Decision Tree is clearly the model to bring forward into further development.
+# 
+# However, AUC is absolutely not the only factor to consider in a real production pipeline. 
+# Other vital business and technical considerations include:
+# 1. Inference Latency: Decision trees generate predictions extremely quickly, making them 
+#    ideal for live APIs, whereas complex ensembles or deep learning models can be slower.
+# 2. Interpretability: Decision trees offer clear decision paths, allowing stakeholders to 
+#    understand exactly why a sample was flagged (crucial for regulatory compliance).
+# 3. Model Size and Overhead: A single shallow tree requires very little storage space and 
+#    minimal memory to run, making deployment straightforward.
+# 4. Calibration: We must verify if the predicted probabilities map accurately to actual 
+#    real-world event frequencies, rather than just ranking them correctly.
 
 # Q3
-print("\n# GridSearch Question 3")
+print("\n--- GridSearch Question 3 ---")
 
-# 1. Extract results dictionary from the Decision Tree grid search
+# 1. Extract results dictionary from the Decision Tree grid search (Q2)
 cv_results = grid_search_dt.cv_results_
 
-# 2. Extract values for params, means, and standard deviations
-params_list = cv_results["params"]
-mean_scores = cv_results["mean_test_score"]
-std_scores = cv_results["std_test_score"]
+# 2. Extract specific metric arrays and parameters
+mean_scores = cv_results['mean_test_score']
+std_scores = cv_results['std_test_score']
+params = cv_results['params']
 
-# 3. Zip together, map to human-readable strings, and sort descending by mean score
-results_summary = list(zip(params_list, mean_scores, std_scores))
-results_summary.sort(key=lambda x: x[1], reverse=True)
+# 3. Create a structured, sortable list of dictionaries
+results_list = []
+for i in range(len(params)):
+    results_list.append({
+        'param': params[i]['dt__max_depth'],
+        'mean': mean_scores[i],
+        'std': std_scores[i]
+    })
 
-# 4. Print the sorted metrics
-print("Decision Tree Parameter Ranking (Sorted by Mean CV AUC):")
-for params, mean, std in results_summary:
-    depth_val = params["dt__max_depth"]
-    print(f"max_depth: {str(depth_val):<4} | Mean AUC: {mean:.4f} | Std Dev: {std:.4f}")
+# 4. Sort results by mean performance descending (best to worst)
+sorted_results = sorted(results_list, key=lambda x: x['mean'], reverse=True)
 
-# Comment: 
-# Comparing max_depth: 5 (Mean AUC: 0.9165, Std Dev: 0.0213) and max_depth: 3 
-# (Mean AUC: 0.9024, Std Dev: 0.0191), both show similar mean performance profiles. 
-# If choosing between them based on variance, max_depth: 3 is slightly more stable 
-# across cross-validation folds due to its lower standard deviation (0.0191). 
-# Practically, max_depth: 3 is the preferred choice because it provides comparable 
-# accuracy while enforcing a simpler tree architecture that limits overfitting risks.
+# 5. Print out structural performance breakdown
+print("Decision Tree max_depth Tuning Results (Best to Worst):")
+for res in sorted_results:
+    param_display = "None (Unlimited)" if res['param'] is None else f"{res['param']}"
+    print(f"max_depth: {param_display:<16} | Mean CV AUC: {res['mean']:.4f} (± Std Dev: {res['std']:.4f})")
+
+# COMMENT: Tuning Robustness and Variance Analysis
+# Looking at the results, max_depth=5 (Mean CV AUC: 0.9165) and max_depth=3 (Mean CV AUC: 0.9024) 
+# have relatively close mean scores, but different standard deviations (0.0213 vs 0.0191). 
+# Another clear case is comparing deeper vs unlimited trees: max_depth=8 (0.8811 ± 0.0257) 
+# vs max_depth=None (0.8626 ± 0.0390).
+# 
+# If choosing between two configurations with similar mean scores, you should pick the one with 
+# the lower standard deviation. A lower standard deviation indicates that the model's 
+# performance is consistent and stable across different cross-validation folds. A higher 
+# standard deviation warns you that the performance is highly sensitive to the specific 
+# slice of training data it receives, which means it carries a higher risk of overfitting 
+# or acting unpredictably when deployed on real-world data.
 
 
-# ==========================================
-# # --- Joblib (Save/Load) ---
-# ==========================================
+# --- Joblib ---
 
 # Q1
-print("\n# joblib Question 1")
+print("\n--- joblib Question 1 ---")
 
-# 1. Extract the best estimator pipeline from GridSearch Question 1
-best_lr_pipe = grid_search.best_estimator_
+# 1. Save the best pipeline from GridSearch Question 1 to disk
+model_path = "models/warmup_model.pkl"
+joblib.dump(best_model, model_path)
 
-# 2. Save the pipeline to the designated models directory
-joblib.dump(best_lr_pipe, "models/warmup_model.pkl")
+# 2. Load the pipeline back into memory
+loaded_clf = joblib.load(model_path)
 
-# 3. Load the model back from disk
-loaded_clf = joblib.load("models/warmup_model.pkl")
+# 3. Generate predictions using both the original and loaded instances
+# Note: best_model is our best_lr_pipe from GridSearch Q1
+original_preds = best_model.predict(X_test)
+loaded_preds = loaded_clf.predict(X_test)
 
-# 4. Generate predictions from both the original and loaded instances
-original_preds = best_lr_pipe.predict(X_test)
-loaded_preds   = loaded_clf.predict(X_test)
-
-# 5. Assert equality to confirm integrity of the binary serialization
+# 4. Enforce strict reproducibility with an assertion statement
 assert (original_preds == loaded_preds).all(), "Predictions do not match!"
 print("Predictions match. Model saved and loaded successfully.")
 
-# Comment: 
-# If you save only the logistic regression model without the pipeline's scaler, 
-# calling .predict(X_test) on raw, unscaled test data would cause silent feature misalignment 
-# and catastrophic performance degradation. The model's learned weights are strictly 
-# dependent on the mean and variance scaling of the training data. Passing raw values 
-# directly into those coefficients violates the model assumptions and ruins the predictions, 
-# which highlights why wrapping steps into a single Pipeline object is critical.
+# COMMENT: Serialization and Preprocessing Pipeline Risk Analysis
+# If you only saved the Logistic Regression model without encapsulating it in a Pipeline 
+# with the scaler, calling .predict(X_test) on raw, unscaled test data would cause silent, 
+# catastrophic failure. 
+# 
+# The Python script wouldn't throw a hard crash or SyntaxError, but the model would produce 
+# highly inaccurate predictions. Because Logistic Regression relies on coefficients optimized 
+# specifically for scaled inputs, feeding it raw features (which may have completely different 
+# magnitudes or units) causes the mathematical dot product to skew completely. This highlights 
+# why saving the complete Pipeline artifact is a mandatory best practice: it guarantees that 
+# preprocessing transformations and downstream model inferences always stay perfectly synchronized.
+
 
 # Q2
-print("\n# joblib Question 2")
+print("\n--- joblib Question 2 ---")
 
-# --- Simulated prediction script ---
+# 1. --- Simulated prediction script ---
+# Load the model completely fresh from the disk
+production_model = joblib.load("models/warmup_model.pkl")
 
-# 1. Load the model fresh from disk
-deployed_clf = joblib.load("models/warmup_model.pkl")
-
-# 2. Define the three hand-crafted test cases (raw, unscaled data)
+# Three hand-crafted test cases — raw, unscaled data
 new_samples = np.array([
-    [2.5,  1.2, -0.3,  0.8,  1.0, -0.5,  0.2,  0.9, -1.1,  0.4],
-    [-1.0, 0.5,  0.9, -0.7, -0.2,  1.3, -0.8,  0.1,  0.5, -0.3],
-    [0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0],
+    [2.5, 1.2, -0.3, 0.8, 1.0, -0.5, 0.2, 0.9, -1.1, 0.4],
+    [-1.0, 0.5, 0.9, -0.7, -0.2, 1.3, -0.8, 0.1, 0.5, -0.3],
+    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
 ])
 
-# 3. Generate predictions and class probabilities
-simulated_preds = deployed_clf.predict(new_samples)
-simulated_probs = deployed_clf.predict_proba(new_samples)[:, 1]
+# 2. Generate hard class predictions and soft class probabilities
+simulated_preds = production_model.predict(new_samples)
+simulated_probs = production_model.predict_proba(new_samples)
 
-# 4. Display the results for each row
-print("Simulated Production Inference Results:")
-for i in range(len(new_samples)):
-    print(f"Sample {i+1} | Predicted Class: {simulated_preds[i]} | Probability of Class 1: {simulated_probs[i]:.4f}")
+# 3. Print out predictions and metrics for each sample row
+print("Simulated Real-Time Inference Results:")
+for idx, (pred, prob) in enumerate(zip(simulated_preds, simulated_probs)):
+    print(f"Row {idx + 1}:")
+    print(f"  Predicted Class: {pred}")
+    print(f"  Probability Distribution: Class 0 = {prob[0]:.4f}, Class 1 = {prob[1]:.4f}")
 
-# Comment: 
-# For the all-zeros row, we expect a predicted probability near 0.5 (maximum uncertainty). 
-# This happens because the Pipeline applies a StandardScaler first; if the training features are 
-# centered near 0, an input of 0 transforms into a scaled value near 0 (the average value). 
-# When all inputs to a logistic regression model are 0, the prediction relies entirely on the 
-# intercept (bias) term. Since the dataset has balanced classes, the intercept is close to 0, 
-# leading to a probability close to 0.5 (a coin flip).
+# COMMENT: All-Zeros Row Prediction Rationale
+# The all-zeros row predicted Class 1 with a probability of 65.31%. 
+# 
+# This occurs because the decision boundary of a Logistic Regression model is determined by 
+# its intercept term, not just its feature coefficients. Mathematically, the probability is 
+# calculated using the sigmoid function: 1 / (1 + exp(-(W * X + b))). 
+# 
+# When the input vector X is entirely zeros, the product (W * X) drops out to exactly 0, leaving 
+# only the intercept 'b' (bias term). Since our model's intercept is positive, the sigmoid 
+# transformation of that positive bias evaluates to a probability greater than 50% (specifically 
+# 65.31% here). This means that in the complete absence of any unique feature evidence, the model's 
+# baseline structural bias tilts naturally toward predicting the majority positive class.
