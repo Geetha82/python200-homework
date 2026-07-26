@@ -21,12 +21,12 @@ with open(METADATA_PATH, "r") as f:
     metadata = json.load(f)
 
 # Dynamically extract feature order from metadata
-expected_features = metadata["feature_names_order"]
+expected_features = metadata["feature_names"]
 
 print("\n=== Model Verification & Metadata ===")
-print(f"Target City:       {metadata['target_city']['name']}")
+print(f"Target City:       {metadata['city']['name']}")
 print(f"Expected Features: {', '.join(expected_features)}")
-print(f"Model Test AUC:    {metadata['test_set_auc']:.4f}\n")
+print(f"Model Test AUC:    {metadata['test_auc']:.4f}\n")
 
 
 # Task 2: Predict on New Data (Aligned with 4-variable spec)
@@ -36,36 +36,31 @@ hypothetical_days = pd.DataFrame(
             "temperature_2m_max": 18.0,
             "temperature_2m_min": 11.0,
             "precipitation_sum": 0.0,
-            "wind_speed_10m_max": 12.0,
-            "description": "Clearly Good (Mild, calm breeze)",
+            "wind_speed_10m_max": 12.0
         },
         {
             "temperature_2m_max": 12.0,
             "temperature_2m_min": 5.0,
             "precipitation_sum": 12.5,
-            "wind_speed_10m_max": 45.0,
-            "description": "Clearly Bad (Chilly, pouring rain, intense wind gusts)",
+            "wind_speed_10m_max": 45.0
         },
         {
             "temperature_2m_max": 3.0,
             "temperature_2m_min": -4.0,
             "precipitation_sum": 0.0,
-            "wind_speed_10m_max": 14.0,
-            "description": "Clearly Bad (Too cold, below freezing comfort bounds)",
+            "wind_speed_10m_max": 14.0
         },
         {
             "temperature_2m_max": 24.5,
             "temperature_2m_min": 13.0,
             "precipitation_sum": 2.8,
-            "wind_speed_10m_max": 26.5,
-            "description": "Borderline Case (Comfortable temp, but rain and wind are near thresholds)",
+            "wind_speed_10m_max": 26.5
         },
         {
             "temperature_2m_max": 14.0,
             "temperature_2m_min": 9.0,
             "precipitation_sum": 0.0,
-            "wind_speed_10m_max": 22.0,
-            "description": "Borderline Case (Cool morning, moderate acceptable breeze)",
+            "wind_speed_10m_max": 22.0
         },
     ]
 )
@@ -82,7 +77,8 @@ for i in range(len(hypothetical_days)):
     pred_label = "good" if predictions[i] == 1 else "skip"
     prob_good = probabilities[i]
 
-    print(f"\nDay {i+1}: {row['description']}")
+    print(f"\nDay {i+1}:")
+
     print(
         f"  Inputs:     Max Temp: {row['temperature_2m_max']}°C | "
         f"Min Temp: {row['temperature_2m_min']}°C | "

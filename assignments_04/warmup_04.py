@@ -37,7 +37,7 @@ X_train, X_test, y_train, y_test = train_test_split(
 # --- ROC and AUC ---
 # ==========================================
 
-# # Q1
+# Q1
 print("--- ROC and AUC: Q1 ---")
 # Scale data manually for KNN configuration
 scaler_warmup = StandardScaler()
@@ -72,7 +72,7 @@ print(f"KNN AUC: {auc_knn:.4f}")
 # randomly selected negative instance, completely independent of any specific choice of 
 # operational decision threshold.
 
-# # Q2
+# Q2
 print("\n--- ROC and AUC: Q2 ---")
 fpr_lr, tpr_lr, _ = roc_curve(y_test, y_probs_lr)
 fpr_knn, tpr_knn, _ = roc_curve(y_test, y_probs_knn)
@@ -98,7 +98,7 @@ print("ROC comparison plot saved to outputs/roc_comparison.png")
 # catching 80% of the true positive cases, using the KNN model will produce far fewer 
 # false alarms, minimizing operational noise, unnecessary alert fatigue, and triage costs.
 
-# # Q3
+# Q3
 print("\n--- ROC and AUC: Q3 ---")
 fpr, tpr, thresholds = roc_curve(y_test, y_probs_lr)
 
@@ -138,8 +138,9 @@ print(f"F1 at Optimum: {best_f1:.4f}")
 # or fraud detection systems, where it is vital to flag potential positives aggressively.
 
 
+# --- GridSearchCV ---
 
-# GridSearch Q1
+# Q1
 
 # Define the pipeline with scaling and logistic regression
 gs_pipeline = Pipeline([
@@ -174,7 +175,6 @@ print(f"Best C value: {grid_search.best_params_['lr__C']}")
 print(f"Best CV AUC score: {grid_search.best_score_:.4f}")
 print(f"Test AUC of best estimator: {test_auc:.4f}")
 
-# --- GridSearchCV ---
 # GridSearch Q1 Evaluation Comment
 # The grid search selected C = 100.0, which differs from the default value of C = 1.0.
 # Compared to the baseline model using default settings (which achieved a test AUC of 0.7060), 
@@ -182,7 +182,7 @@ print(f"Test AUC of best estimator: {test_auc:.4f}")
 # This negligible change indicates that tuning the regularization parameter C on this specific 
 # dataset provides no practical performance improvement for Logistic Regression.
 
-# GridSearch Q2
+# Q2
 
 # Define the pipeline with scaling and a decision tree
 dt_pipeline = Pipeline([
@@ -217,7 +217,7 @@ print(f"Best max_depth value: {dt_grid_search.best_params_['dt__max_depth']}")
 print(f"Best Decision Tree CV AUC score: {dt_grid_search.best_score_:.4f}")
 print(f"Decision Tree Test AUC of best estimator: {dt_test_auc:.4f}")
 
-# --- GridSearchCV ---
+
 # GridSearch Q2 Evaluation Comment
 # The tuned Decision Tree (max_depth=5) achieved a test AUC of 0.9354, dramatically outperforming 
 # the best Logistic Regression from Q1, which plateaued at a test AUC of 0.7057.
@@ -229,8 +229,7 @@ print(f"Decision Tree Test AUC of best estimator: {dt_test_auc:.4f}")
 # 3. Risk of overfitting (trees can be unstable with small data changes compared to linear models).
 # 4. Calibration of predicted probabilities (tree probabilities often require post-processing).
 
-# GridSearch Q3
-
+# Q3
 # Extract the results dictionary from the Decision Tree grid search
 cv_results = dt_grid_search.cv_results_
 
@@ -247,7 +246,7 @@ for idx in sorted_indices:
     param_val = params[idx]['dt__max_depth']
     print(f"max_depth: {str(param_val):<5} | Mean CV AUC: {means[idx]:.4f} (± {stds[idx]:.4f})")
 
-# --- GridSearchCV ---
+
 # GridSearch Q3 Model Selection Comment
 # Comparing max_depth = 5 (Mean: 0.9165, Std: 0.0213) and max_depth = 3 (Mean: 0.9024, Std: 0.0191):
 # While depth 5 offers a slightly higher mean score, depth 3 has a lower standard deviation (0.0191 vs 0.0213).
@@ -257,7 +256,7 @@ for idx in sorted_indices:
 # it creates a simpler, shallower tree that generalizes better and carries less risk of overfitting.
 
 # --- joblib ---
-# joblib Q1
+# Q1
 
 # Save the best logistic regression pipeline from GridSearch Question 1
 joblib.dump(best_model, "models/warmup_model.pkl")
@@ -273,7 +272,6 @@ loaded_preds = loaded_clf.predict(X_test)
 assert (original_preds == loaded_preds).all(), "Predictions do not match!"
 print("Predictions match. Model saved and loaded successfully.")
 
-# --- joblib ---
 # joblib Q1 Evaluation Comment
 # If you saved only the inner LogisticRegression model (without the scaler) and called 
 # .predict(X_test) on raw, unscaled data, the model's predictions would completely break. 
@@ -282,7 +280,7 @@ print("Predictions match. Model saved and loaded successfully.")
 # the mathematical calculations and leading to incorrect, unpredictable classification results.
 # This highlights why using an end-to-end scikit-learn Pipeline is a critical best practice.
 
-# --- Q2 ---
+# Q2
 print("\n--- Simulated prediction script ---")
 
 # Load model fresh from disk
