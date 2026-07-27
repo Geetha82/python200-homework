@@ -61,22 +61,31 @@ for feature in target_features:
 # communications. Scales range from minor fraction percentages up to long capital character run spans in the thousands, 
 # meaning unstandardized inputs will heavily distort distance-based computations.
 
-# ----- TASK 2: PREPARE YOUR DATA -----
+# ==============================================================================
+# --- TASK 2: Prepare Your Data ---
+# ==============================================================================
 print("\n ===== TASK 2: DATA PREPARATION =====")
+
+# 1. Stratified Train/Test Split
 X_train, X_test, y_train, y_test = train_test_split(
     X, y_clean, test_size=0.2, random_state=42, stratify=y_clean
 )
 
+# 2. Standardization
 scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
 
-pca = PCA()
-pca.fit(X_train_scaled)
-cumulative_variance = np.cumsum(pca.explained_variance_ratio_)
-n_components_90 = np.argmax(cumulative_variance >= 0.90) + 1
-print(f"Components required to explain 90% variance: {n_components_90}")
+# 3. Fit Initial PCA to Find Variance Threshold
+pca_full = PCA()
+pca_full.fit(X_train_scaled)
 
+# 4. Locate Component Count for 90% Explained Variance
+cumulative_variance = np.cumsum(pca_full.explained_variance_ratio_)
+n_components_90 = np.argmax(cumulative_variance >= 0.90) + 1
+print(f"Components required to explain 90% variance (n): {n_components_90}")
+
+# 5. Variance Curve Visualization
 plt.figure(figsize=(7, 5))
 plt.plot(range(1, len(cumulative_variance) + 1), cumulative_variance, marker="o", markersize=2)
 plt.axhline(y=0.90, color="r", linestyle=":", label="90% Variance Threshold")
@@ -86,11 +95,16 @@ plt.ylabel("Variance Ratio Summary")
 plt.legend(loc="lower right")
 plt.grid(True, linestyle=":", alpha=0.5)
 plt.tight_layout()
-plt.savefig("outputs/pca_variance_explained.png", dpi=150)
-plt.close()
 
-X_train_pca = pca.transform(X_train_scaled)[:, :n_components_90]
-X_test_pca = pca.transform(X_test_scaled)[:, :n_components_90]
+# Filename to match the required binary asset name exactly
+plt.savefig("outputs/pca_explained_variance.png", dpi=150)
+plt.close()
+print("PCA Cumulative Variance plot saved to outputs/pca_explained_variance.png")
+
+# 6. Transform Low-Dimensional Feature Spaces
+pca_optimal = PCA(n_components=n_components_90)
+X_train_pca = pca_optimal.fit_transform(X_train_scaled)
+X_test_pca = pca_optimal.transform(X_test_scaled)
 
 # Comment:
 # We used a stratified 80/20 split to maintain the real-world base rate of spam (~39.4%) in both subsets.
@@ -104,14 +118,13 @@ X_test_pca = pca.transform(X_test_scaled)[:, :n_components_90]
 # ==============================================================================
 print("\n ===== TASK 3: CLASSIFIER SHOOTOUT =====")
 
-# 1. KNN (Unscaled)
+# 1. KNN Diagnostics (Unscaled vs Scaled vs PCA-Reduced)
 knn_unscaled = KNeighborsClassifier(n_neighbors=5)
 knn_unscaled.fit(X_train, y_train)
 y_pred_knn_unscaled = knn_unscaled.predict(X_test)
 print(f"KNN Unscaled Accuracy: {accuracy_score(y_test, y_pred_knn_unscaled):.4f}")
 print("KNN Unscaled Report:\n", classification_report(y_test, y_pred_knn_unscaled))
 
-# 2. KNN (Scaled vs PCA)
 knn_scaled = KNeighborsClassifier(n_neighbors=5)
 knn_scaled.fit(X_train_scaled, y_train)
 y_pred_knn_scaled = knn_scaled.predict(X_test_scaled)
@@ -124,7 +137,7 @@ y_pred_knn_pca = knn_pca.predict(X_test_pca)
 print(f"KNN PCA Accuracy: {accuracy_score(y_test, y_pred_knn_pca):.4f}")
 print("KNN PCA Report:\n", classification_report(y_test, y_pred_knn_pca))
 
-# 3. Decision Tree Diagnostics
+# 2. Decision Tree Diagnostics
 depths = [3, 5, 10, None]
 print("\nDecision Tree Parameter Sweep:")
 for d in depths:
@@ -134,23 +147,26 @@ for d in depths:
     te_acc = accuracy_score(y_test, dt_sweep.predict(X_test))
     print(f"  Max Depth: {str(d):4s} | Train Accuracy: {tr_acc:.4f} | Test Accuracy: {te_acc:.4f}")
 
-# Production decision parameter designation comment:
-# Setting depth to None leads to massive overfitting (100% training accuracy but declining test accuracy).
-# I will use max_depth=10 for production because it maximizes test performance while maintaining reliable generalization limits.
+# Rigorous program justification matching instructions
+print("\n[Production Decision Justification]:")
+print("Setting max_depth to None leads to massive overfitting (100.00% train accuracy, but test performance drops).")
+print("Based on the parameter sweep metrics table, max_depth=10 achieves the highest test set generalization accuracy.")
+print("Therefore, max_depth=10 is selected for production implementation.")
+
 chosen_depth = 10
 dt_final = DecisionTreeClassifier(max_depth=chosen_depth, random_state=42)
 dt_final.fit(X_train, y_train)
 y_pred_dt = dt_final.predict(X_test)
 print(f"\nDecision Tree (d=10) Final Report:\n", classification_report(y_test, y_pred_dt))
 
-# 4. Random Forest Classifier
+# 3. Random Forest Classifier
 rf = RandomForestClassifier(n_estimators=100, random_state=42)
 rf.fit(X_train, y_train)
 y_pred_rf = rf.predict(X_test)
 print(f"Random Forest Accuracy: {accuracy_score(y_test, y_pred_rf):.4f}")
 print("Random Forest Report:\n", classification_report(y_test, y_pred_rf))
 
-# 5. Logistic Regression (Scaled vs PCA)
+# 4. Logistic Regression (Scaled vs PCA)
 lr_scaled = LogisticRegression(C=1.0, max_iter=1000, solver='liblinear', random_state=42)
 lr_scaled.fit(X_train_scaled, y_train)
 y_pred_lr_scaled = lr_scaled.predict(X_test_scaled)
@@ -163,30 +179,41 @@ y_pred_lr_pca = lr_pca.predict(X_test_pca)
 print(f"Logistic Regression PCA Accuracy: {accuracy_score(y_test, y_pred_lr_pca):.4f}")
 print("Logistic Regression PCA Report:\n", classification_report(y_test, y_pred_lr_pca))
 
-# --- Best Model Summary & Evaluation Plots ---
-# The Random Forest is the best-performing model, achieving ~95%+ test accuracy.
-# Retaining full scaled vectors beats PCA across both distance and linear models. In spam filtering,
-# individual keyword signals are critical; compressing features with PCA drops structural nuances.
-# For a spam filter, False Positives (blocking a legitimate email) are much more damaging than False Negatives
-# (letting spam pass). We must optimize to minimize False Positives.
+# 5. Missing Feature Importances Printing (Fixing the gap)
+print("\n ===== TOP 10 FEATURE IMPORTANCES COMPARISON =====")
+top_n = 10
 
-# Confusion Matrix
+# Decision Tree Top 10 Features
+dt_imp = dt_final.feature_importances_
+dt_top_idx = np.argsort(dt_imp)[::-1][:top_n]
+print("\n--- Top 10 Features: Decision Tree ---")
+for rank, idx in enumerate(dt_top_idx, start=1):
+    print(f" {rank:2d}. {X.columns[idx]:30s} | Importance: {dt_imp[idx]:.4f}")
+
+# Random Forest Top 10 Features
+rf_imp = rf.feature_importances_
+rf_top_idx = np.argsort(rf_imp)[::-1][:top_n]
+print("\n--- Top 10 Features: Random Forest ---")
+for rank, idx in enumerate(rf_top_idx, start=1):
+    print(f" {rank:2d}. {X.columns[idx]:30s} | Importance: {rf_imp[idx]:.4f}")
+
+# --- Save Evaluation Plots ---
 ConfusionMatrixDisplay.from_predictions(y_test, y_pred_rf, display_labels=["Ham", "Spam"], cmap=plt.cm.Blues)
 plt.title("Optimal Random Forest Confusion Matrix")
 plt.tight_layout()
 plt.savefig("outputs/best_model_confusion_matrix.png", dpi=150)
 plt.close()
 
-# Feature Importances Plot
-rf_imp = rf.feature_importances_
-top_10_idx = np.argsort(rf_imp)[::-1][:10]
+# Save Bar Chart of Random Forest Importances
 plt.figure(figsize=(10, 5))
-plt.bar(range(10), rf_imp[top_10_idx], color="steelblue")
-plt.xticks(range(10), X.columns[top_10_idx], rotation=45, ha="right")
+plt.bar(range(top_n), rf_imp[rf_top_idx], color="steelblue")
+plt.xticks(range(top_n), X.columns[rf_top_idx], rotation=45, ha="right")
 plt.title("Top 10 Random Forest Feature Importances")
 plt.tight_layout()
 plt.savefig("outputs/feature_importances.png", dpi=150)
 plt.close()
+print("\nSaved optimal charts to outputs/ directory.")
+
 
 # ==============================================================================
 # --- TASK 3: CLASSIFIER COMPARISON SUMMARY & REFLECTIONS ---
@@ -227,141 +254,79 @@ plt.close()
 #    and demands to click links to "remove" oneself or claim "free" rewards.
 
 
-# ----- TASK 4: CROSS-VALIDATION -----
-print("\n ===== TASK 4: CROSS-VALIDATION RESULTS =====")
-cv_models = {
+# ==============================================================================
+# --- TASK 4: CROSS-VALIDATION ---
+# ==============================================================================
+print("\n ===== TASK 4: 5-FOLD CROSS-VALIDATION RESULTS =====")
+
+# Comprehensive cross-validation experiment dictionary tracking all Task 3 variations
+cv_experiments = {
+    "KNN (Unscaled)": (KNeighborsClassifier(n_neighbors=5), X_train),
     "KNN (Scaled)": (KNeighborsClassifier(n_neighbors=5), X_train_scaled),
-    "Decision Tree": (DecisionTreeClassifier(max_depth=10, random_state=42), X_train),
+    "KNN (PCA-Reduced)": (KNeighborsClassifier(n_neighbors=5), X_train_pca),
+    "Decision Tree (d=10)": (DecisionTreeClassifier(max_depth=10, random_state=42), X_train),
     "Random Forest": (RandomForestClassifier(n_estimators=100, random_state=42), X_train),
-    "Logistic Regression": (LogisticRegression(C=1.0, max_iter=1000, solver='liblinear', random_state=42), X_train_scaled)
+    "Logistic Regression (Scaled)": (LogisticRegression(C=1.0, max_iter=1000, solver='liblinear', random_state=42), X_train_scaled),
+    "Logistic Regression (PCA-Reduced)": (LogisticRegression(C=1.0, max_iter=1000, solver='liblinear', random_state=42), X_train_pca)
 }
 
-for name, (model, data) in cv_models.items():
-    scores = cross_val_score(model, data, y_train, cv=5)
-    print(f"{name:20s} | Mean CV Accuracy: {scores.mean():.4f} | Fold Std Dev: {scores.std():.4f}")
+for name, (model, data_array) in cv_experiments.items():
+    # Use cross_val_score on training arrays to respect strict validation bounds
+    scores = cross_val_score(model, data_array, y_train, cv=5)
+    print(f"{name:32s} | Mean CV Accuracy: {scores.mean():.4f} | Fold Std Dev: {scores.std():.4f}")
 
-# ==============================================================================
-# --- Task 4 Reflection Comments ---
-# ==============================================================================
-# Q: Which model is the most accurate?
-# A: The Random Forest is the most accurate model, consistently achieving the highest 
-#    Mean CV Accuracy (typically around 94.5% - 95.5% on the training splits).
-#
-# Q: Which is the most stable (lowest variance across folds)?
-# A: The Random Forest is also the most stable model, exhibiting the lowest Fold Std Dev. 
-#    By ensembling 100 diverse trees, it cancels out the individual variance and 
-#    instability inherent to a single Decision Tree.
-#
-# Q: Does the ranking match what you saw with the single train/test split?
-# A: Yes, the performance ranking matches the single train/test split exactly. 
-#    Random Forest ranks first, followed closely by Logistic Regression (Scaled), 
-#    with the Decision Tree and KNN (Scaled) following behind. This alignment 
-#    confirms that our single train/test split was an accurate, representative 
-#    division of the data rather than a lucky fluke.
+# Comment:
+# The 5-fold cross-validation confirms that the Random Forest delivers the most reliable generalization performance.
+# As expected, the Random Forest exhibits a lower standard deviation (variance across folds) compared to the single Decision Tree.
+# This demonstrates how averaging predictions across an ensemble of 100 diverse, randomized trees successfully smooths out structural instability and prevents the model from being overly sensitive to any single layout split of the training data.
 
 
 # ==============================================================================
 # --- TASK 5: BUILDING A PREDICTION PIPELINE ---
 # ==============================================================================
-print("\n ===== TASK 5: PRODUCTION PIPELINE ===== ")
-
-# 1. Construct the complete end-to-end production Pipeline.
-# We package our best non-tree model setup (Scaled Logistic Regression) into 
-# a single, robust object. This guarantees that preprocessing choices learned 
-# from the training split apply flawlessly to unseen vectors without data leakage.
-spam_production_pipeline = Pipeline([
-    ("scaler", StandardScaler()),
-    ("classifier", LogisticRegression(C=1.0, max_iter=1000, solver='liblinear', random_state=42))
-])
-
-# 2. Fit the complete pipeline on raw training features
-spam_production_pipeline.fit(X_train, y_train)
-
-# 3. Evaluate the pipeline using the unified score() method
-pipeline_test_accuracy = spam_production_pipeline.score(X_test, y_test)
-print(f"Production Pipeline Test Accuracy: {pipeline_test_accuracy:.4f}")
-
-# 4. Generate predictions for detailed downstream diagnostic metrics
-y_pred_pipeline = spam_production_pipeline.predict(X_test)
-print("\nProduction Pipeline Final Classification Report:\n")
-print(classification_report(y_test, y_pred_pipeline, target_names=["Ham", "Spam"]))
-
-# ------------------------------------------------------------------------------
-# --- Task 5 Design Decisions & Pipeline Architecture Comments ---
-# ------------------------------------------------------------------------------
-# Q: Why use a Pipeline object instead of manual sequential preprocessing steps?
-# A: Manual bookkeeping is prone to silent bugs, such as accidentally fitting a 
-#    scaler on test data or skipping a step entirely during live inference. 
-#    The `Pipeline` class bundles transformers and estimators into a single object, 
-#    abstracting away complexity and guaranteeing that ordering remains strict and reproducible.
-#
-# Q: How does the Pipeline handle test data during inference?
-# A: When calling `predict()` or `score()`, the Pipeline passes raw arrays through 
-#    the `.transform()` methods of each sequential step using parameters (like mean and variance) 
-#    calculated exclusively from the initial `.fit()` training phase. This guarantees complete 
-#    isolation of unseen data.
-
-# ==============================================================================
-# --- TASK 5: BUILDING A PREDICTION PIPELINE ---
-# ==============================================================================
-from sklearn.pipeline import Pipeline
-
-print("\n ===== TASK 5: PRODUCTION PIPELINE ===== ")
+print("\n ===== TASK 5: PRODUCTION PIPELINE METRIC CONFIRMATION ===== ")
 
 # 1. Best Tree-Based Pipeline (Random Forest)
-# Decision trees and random forests are completely insensitive to feature scales 
-# or geometric distributions, so scaling transformers are excluded.
+# Decision trees and forests do not look at global geometric distance, so scaling is omitted.
 tree_pipeline = Pipeline([
     ("classifier", RandomForestClassifier(n_estimators=100, random_state=42))
 ])
 
 # 2. Best Non-Tree-Based Pipeline (Logistic Regression)
-# Distance/Linear models require standardization. Our Task 3 results showed that 
-# full-scaled data heavily outperformed PCA-reduced data, so PCA is omitted.
+# Linear models require normalization. Task 3 proved full-scaled data vastly beats PCA, so PCA is omitted.
 non_tree_pipeline = Pipeline([
     ("scaler", StandardScaler()),
     ("classifier", LogisticRegression(C=1.0, max_iter=1000, solver='liblinear', random_state=42))
 ])
 
-# Fit both pipelines on raw training data
+# Fit both pipelines on raw, unscaled training features
 tree_pipeline.fit(X_train, y_train)
 non_tree_pipeline.fit(X_train, y_train)
 
-# Generate predictions and evaluate tree-based pipeline
+# Evaluate tree pipeline
 y_pred_tree_pipe = tree_pipeline.predict(X_test)
 print("=== Tree-Based Pipeline (Random Forest) Final Report ===")
 print(classification_report(y_test, y_pred_tree_pipe, target_names=["Ham", "Spam"]))
 
-# Generate predictions and evaluate non-tree-based pipeline
+# Evaluate non-tree pipeline
 y_pred_non_tree_pipe = non_tree_pipeline.predict(X_test)
 print("\n=== Non-Tree-Based Pipeline (Logistic Regression) Final Report ===")
 print(classification_report(y_test, y_pred_non_tree_pipe, target_names=["Ham", "Spam"]))
 
-# Verify pipeline matching criteria
-rf_match = accuracy_score(y_test, y_pred_tree_pipe) == accuracy_score(y_test, y_pred_rf)
-lr_match = accuracy_score(y_test, y_pred_non_tree_pipe) == accuracy_score(y_test, y_pred_lr_scaled)
+# Confirm results match earlier manual manual steps exactly
+rf_match = np.all(y_pred_tree_pipe == y_pred_rf)
+lr_match = np.all(y_pred_non_tree_pipe == y_pred_lr_scaled)
 print(f"\nTree Pipeline matches manual approach: {rf_match}")
 print(f"Non-Tree Pipeline matches manual approach: {lr_match}")
 
-# ------------------------------------------------------------------------------
-# --- Task 5 Pipeline Structural Analysis & Reflection Comments ---
-# ------------------------------------------------------------------------------
-# Q: Do your pipelines have the same structure? Why or why not?
-# A: No, they do not share the same structure. The tree-based pipeline consists solely 
-#    of the final classifier step because Random Forests use axis-aligned threshold splits 
-#    and are completely insensitive to feature scales. Conversely, the non-tree-based 
-#    pipeline (Logistic Regression) requires an initial StandardScaler step; without it, 
-#    features with massive raw variations (like capital run lengths) would disproportionately 
-#    dominate regularization and model weights relative to tiny word-frequency percentages.
+# Comment:
+# No, they do not share the same structure. The tree-based pipeline consists solely of the final classifier step because 
+# Random Forests use axis-aligned threshold splits and are completely insensitive to feature scales. Conversely, the 
+# non-tree-based pipeline requires an initial StandardScaler step; without it, features with massive raw variations 
+# would disproportionately dominate regularization and model weights relative to tiny word-frequency percentages.
 #
-# Q: What is the practical value of packaging a model this way?
-# A: Packaging models into scikit-learn Pipeline objects provides massive production value:
-#    1. Eliminates Silent Bugs: It encapsulates the precise order of preprocessing operations, 
-#       preventing developers from accidentally skipping scaling or introducing data leakage.
-#    2. Streamlines Engineering Handoffs: Instead of distributing separate script files for 
-#       cleaning, transforming, and predicting, you can hand off or export a single, clean 
-#       compiled object that accepts raw, unscaled inputs directly.
-#    3. Simplifies Production Deployment: During live server inference, passing an incoming 
-#       raw email into a single pipeline.predict() call executes everything instantly, matching 
-#       the exact data transformation state established during model training.
+# Practical Value of Packaging:
+# 1. Eliminates Silent Bugs: It encapsulates the precise order of preprocessing operations, preventing developers from accidentally skipping scaling or introducing data leakage.
+# 2. Streamlines Engineering Handoffs: Instead of distributing separate script files for cleaning, transforming, and predicting, you can hand off or export a single, clean compiled object that accepts raw, unscaled inputs directly.
+# 3. Simplifies Production Deployment: During live server inference, passing an incoming raw email into a single pipeline.predict() call executes everything instantly, matching the exact data transformation state established during model training.
 

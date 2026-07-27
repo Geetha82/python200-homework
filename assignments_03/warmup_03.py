@@ -171,23 +171,40 @@ print("Saved outputs/pca_2d_projection.png")
 # Yes, same-digit images show clean tendencies to form clusters together in this low-dimensional 2D principal projection space.
 
 # Q3
-print("\n--- PCA Question 3 ---")
+# # Q3
+# Calculate cumulative explained variance ratio
 cumulative_variance = np.cumsum(pca.explained_variance_ratio_)
-plt.figure(figsize=(7, 5))
-plt.plot(range(1, len(cumulative_variance) + 1), cumulative_variance, marker="o")
-plt.axhline(y=0.80, color="r", linestyle=":", label="80% Threshold")
-plt.title("Cumulative Explained Variance Curve")
-plt.xlabel("Number of Components")
-plt.ylabel("Cumulative Variance Ratio")
-plt.legend(loc="lower right")
-plt.grid(True, linestyle=":", alpha=0.6)
-plt.tight_layout()
-plt.savefig("outputs/pca_variance_explained.png", dpi=150)
-plt.close()
-print("Saved outputs/pca_variance_explained.png")
-# Looking directly at the generated graph curve, the cumulative variance line crosses the 0.80 horizontal threshold line at exactly the 13th component index marker. Therefore, we need approximately 13 components to explain 80% of the dataset variance.
 
-# Q4
+# Locate the exact number of components where cumulative variance first reaches or exceeds 80%
+n_components_80 = np.argmax(cumulative_variance >= 0.80) + 1
+
+print("\n--- PCA Question3 Results ---")
+print(f"Number of principal components required to reach 80% variance: {n_components_80}")
+
+# Plot cumulative explained variance vs. number of components
+fig, ax = plt.subplots(figsize=(8, 5))
+ax.plot(range(1, len(cumulative_variance) + 1), cumulative_variance, marker='o', linestyle='-', markersize=4)
+ax.axhline(y=0.8, color='r', linestyle='--', label='80% Variance Threshold')
+ax.axvline(x=n_components_80, color='g', linestyle=':', label=f'80% Mark (n={n_components_80})')
+
+ax.set_xlabel('Number of Components')
+ax.set_ylabel('Cumulative Explained Variance')
+ax.set_title('PCA Cumulative Explained Variance (Digits Dataset)')
+ax.legend(loc='lower right')
+ax.grid(True, linestyle='--', alpha=0.6)
+
+# Save the figure
+plt.savefig("outputs/pca_variance_explained.png", bbox_inches='tight', dpi=150)
+plt.close()
+print("PCA Cumulative Variance plot saved to outputs/pca_variance_explained.png")
+
+# Comment: 
+# Approximately 13 principal components are needed to explain 80% of the variance. 
+# This is explicitly determined by fitting PCA on X_digits and finding where the 
+# plotted cumulative variance curve first crosses the 0.80 threshold mark.
+
+
+# # Q4
 def reconstruct_digit(sample_idx, scores, pca, n_components):
     """Reconstruct one digit using the first n_components principal components."""
     reconstruction = pca.mean_.copy()
@@ -195,32 +212,40 @@ def reconstruct_digit(sample_idx, scores, pca, n_components):
         reconstruction = reconstruction + scores[sample_idx, i] * pca.components_[i]
     return reconstruction.reshape(8, 8)
 
+# Component thresholds and rows setup exactly matching instructions
 n_values = [2, 5, 15, 40]
-fig, axes = plt.subplots(5, 5, figsize=(10, 11))
-print("\n--- PCA Question 4 Results ---")
+n_samples = 5
 
-# --- Row 0: Original images ---
-for col_idx in range(5):
+# 5 rows total: 1 original row + 4 reconstruction rows
+fig, axes = plt.subplots(5, n_samples, figsize=(10, 11))
+fig.suptitle("PCA Image Reconstruction Grid (Digits Dataset)", fontsize=14, fontweight='bold', y=0.98)
+
+for col_idx in range(n_samples):
+    # --- Row 0: Original Images ---
     axes[0, col_idx].imshow(images[col_idx], cmap='gray_r')
-    axes[0, col_idx].set_xticks([])
-    axes[0, col_idx].set_yticks([])
+    axes[0, col_idx].axis('off')
     if col_idx == 0:
-        axes[0, col_idx].set_ylabel("Original", fontsize=12, fontweight='bold', labelpad=15)
-
-# --- Rows 1-4: Reconstructions with varying n_components ---
-for row_idx, n in enumerate(n_values, start=1):
-    for col_idx in range(5):
+        axes[0, col_idx].set_title("Original", loc='center', fontsize=11, fontweight='bold')
+        
+    # --- Rows 1-4: PCA Reconstructions ---
+    for row_idx, n in enumerate(n_values, start=1):
         recon_img = reconstruct_digit(col_idx, scores, pca, n_components=n)
         axes[row_idx, col_idx].imshow(recon_img, cmap='gray_r')
-        axes[row_idx, col_idx].set_xticks([])
-        axes[row_idx, col_idx].set_yticks([])
+        axes[row_idx, col_idx].axis('off')
+        
+        # Apply clear structural labels to the first column of each row
         if col_idx == 0:
-            axes[row_idx, col_idx].set_ylabel(f"n = {n}", fontsize=12, fontweight='bold', labelpad=15)
+            axes[row_idx, col_idx].set_title(f"n = {n} Components", loc='center', fontsize=11, fontweight='bold')
 
 plt.tight_layout()
 plt.savefig("outputs/pca_reconstructions.png", bbox_inches='tight', dpi=150)
 plt.close()
-print("outputs/pca_reconstructions.png saved in outputs folder")
-# The digits become clearly recognizable at around n = 15 components. This aligns perfectly with our variance curve leveling off point, where a tiny minority of components capture the vast majority of dataset structures.
+
+print("\n--- PCA Question4 Results ---")
+print("PCA reconstruction grid saved to outputs/pca_reconstructions.png")
+# Comment:
+# The digits become clearly recognizable at around n = 15 components. 
+# This closely matches where the cumulative explained variance curve begins to level off (crossing the 80% mark at 13 components). 
+# This demonstrates that the first 15 principal components successfully capture the essential geometric structures of individual digits, while subsequent components merely refine minor pixel-level variances.
 
 print("\nAll warmup exercises complete.")
