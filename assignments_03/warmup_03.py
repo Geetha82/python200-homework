@@ -1,6 +1,9 @@
 import os
 import matplotlib.pyplot as plt
 import numpy as np
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 from sklearn.datasets import load_digits, load_iris
 from sklearn.decomposition import PCA
 from sklearn.linear_model import LogisticRegression
@@ -108,28 +111,30 @@ print("Classification Report:")
 print(classification_report(y_test, dt_preds))
 # The Decision Tree accuracy is highly competitive with KNN. Because trees split on single feature thresholds at a time, scaled vs. unscaled data has absolutely no effect on its performance.
 
+
 # --- Logistic Regression and Regularization ---
 # Q1
-c_values = [0.01, 1.0, 100.0]
-print("\n--- Logistic Regression Regularization Question 1 Results ---")
+print("--- Logistic Regression Question 1 ---")
+c_values = [0.01, 1.0, 100]
 
 for c in c_values:
-    # Set up models exactly as specified
-    base_lr = LogisticRegression(C=c, max_iter=1000, solver='liblinear', random_state=42)
-    lr_model = OneVsRestClassifier(base_lr)
+    # Wrap base LogisticRegression model inside the OneVsRestClassifier
+    base_lr = LogisticRegression(penalty='l2', C=c, max_iter=1000, solver='liblinear', random_state=42)
+    ovr_model = OneVsRestClassifier(base_lr)
+    ovr_model.fit(X_train_scaled, y_train)
     
-    # Fit on the scaled training data
-    lr_model.fit(X_train_scaled, y_train)
-    
-    # Bind the combined internal coefficients directly to model.coef_ to match assignment wording
-    lr_model.coef_ = np.array([estimator.coef_.flatten() for estimator in lr_model.estimators_])
-    
-    # Compute using the exact formula required by the instructions
-    coef_magnitude = np.abs(lr_model.coef_).sum()
-    
-    # Display results
-    print(f"C value: {c:6.2f} | Total Coefficient Magnitude: {coef_magnitude:.4f}")
+    # Correctly access and sum the coefficients of the underlying base models
+    total_coef_magnitude = 0.0
+    for model in ovr_model.estimators_:
+        total_coef_magnitude += np.abs(model.coef_).sum()
+        
+    print(f"C = {c:6.2f} | Total Coefficient Magnitude = {total_coef_magnitude:.4f}")
+print()
 
+# Comment: As C increases, the total coefficient magnitude grows significantly larger. 
+# This tells us that smaller C values enforce stronger regularization, shrinking weights 
+# aggressively to keep the model simple, while larger C values relax this penalty, allowing 
+# coefficients to grow to fit the training data more closely.
 
 
 
@@ -186,38 +191,29 @@ print("Saved outputs/pca_2d_projection.png")
 # occurs between digits with similar pixel distributions near the center of the plot.
 
 
-
 # Q3
-# Calculate cumulative explained variance ratio
+print("--- PCA Question 3 ---")
 cumulative_variance = np.cumsum(pca.explained_variance_ratio_)
 
-# Locate the exact number of components where cumulative variance first reaches or exceeds 80%
+# Locate the exact number of components for the 80% threshold
 n_components_80 = np.argmax(cumulative_variance >= 0.80) + 1
-
-print("\n--- PCA Question3 Results ---")
 print(f"Number of principal components required to reach 80% variance: {n_components_80}")
 
-# Plot cumulative explained variance vs. number of components
-fig, ax = plt.subplots(figsize=(8, 5))
-ax.plot(range(1, len(cumulative_variance) + 1), cumulative_variance, marker='o', linestyle='-', markersize=4)
-ax.axhline(y=0.8, color='r', linestyle='--', label='80% Variance Threshold')
-ax.axvline(x=n_components_80, color='g', linestyle=':', label=f'80% Mark (n={n_components_80})')
-
-ax.set_xlabel('Number of Components')
-ax.set_ylabel('Cumulative Explained Variance')
-ax.set_title('PCA Cumulative Explained Variance (Digits Dataset)')
-ax.legend(loc='lower right')
-ax.grid(True, linestyle='--', alpha=0.6)
-
-# Save the figure
-plt.savefig("outputs/pca_variance_explained.png", bbox_inches='tight', dpi=150)
+plt.figure(figsize=(8, 5))
+plt.plot(range(1, len(cumulative_variance) + 1), cumulative_variance, marker='o', linestyle='--')
+plt.axhline(y=0.80, color='r', linestyle=':', label='80% Variance Threshold')
+plt.axvline(x=n_components_80, color='g', linestyle=':', label=f'{n_components_80} Components')
+plt.xlabel('Number of Components')
+plt.ylabel('Cumulative Explained Variance')
+plt.title('PCA Explained Variance Curve')
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+plt.savefig("outputs/pca_variance_explained.png", dpi=150)
 plt.close()
 print("PCA Cumulative Variance plot saved to outputs/pca_variance_explained.png")
 
-# Comment: 
-# Approximately 13 principal components are needed to explain 80% of the variance. 
-# This is explicitly determined by fitting PCA on X_digits and finding where the 
-# plotted cumulative variance curve first crosses the 0.80 threshold mark.
+# Comment: Approximately 13 components are required to explain 80% of the variance.
 
 
 # Q4
