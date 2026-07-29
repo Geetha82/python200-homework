@@ -216,40 +216,34 @@ print("\nSaved optimal charts to outputs/ directory.")
 # --- TASK 3: CLASSIFIER COMPARISON SUMMARY & REFLECTIONS ---
 # ==============================================================================
 # Q: Which model performs best?
-# A: The Random Forest Classifier performs best, achieving an outstanding raw 
-#    test accuracy of 96.03% and leading across all primary metrics.
-#
-# Q: For the classifiers where you compared PCA vs. non-PCA, which worked better 
+# A: The Random Forest Classifier performs best, achieving an outstanding raw
+#    test accuracy of 94.57% and leading across all primary metrics.
+# 
+# Q: For the classifiers where you compared PCA vs. non-PCA, which worked better
 #    and does that match your hypothesis from Task 2?
-# A: The non-PCA (full-scaled) models heavily outperform the PCA-reduced variations 
-#    across both KNN and Logistic Regression. This perfectly matches the Task 2 
-#    hypothesis: spam detection relies intensely on highly specific, isolated keyword 
-#    signals (like a single dollar sign or the word 'free'). Compressing features via 
-#    PCA blurs these individual trigger boundaries, dropping critical structural nuances.
-#
-# Q: For a spam filter specifically, is accuracy the right metric to optimize, 
+# A: The non-PCA (full-scaled) models perform better. For Logistic Regression, 
+#    the full-scaled data achieved 92.94% accuracy compared to 91.86% for PCA. 
+#    This matches the hypothesis: spam filtering relies heavily on precise keyword 
+#    presence (like 'free' or '$'). Slicing with linear PCA blurs these sparse, 
+#    highly specific trigger indicators.
+# 
+# Q: For a spam filter specifically, is accuracy the right metric to optimize,
 #    or would you rather minimize false positives or false negatives? Defend your position.
-# A: Accuracy is the wrong metric to optimize because it treats all mistakes equally. 
-#    In a production email ecosystem, False Positives (marking a critical, legitimate 
-#    email as spam) are vastly more destructive than False Negatives (letting an 
-#    annoying advertisement slip into the inbox). If a real job offer or banking confirmation 
-#    is blacklisted, the user suffers immediate damage. Therefore, we must optimize 
-#    to minimize False Positives (maximizing Precision for the Spam class).
-#
+# A: Accuracy is the wrong metric because it treats all errors equally. In a spam 
+#    filter, a False Positive (marking an important, legitimate email as spam) is 
+#    far more damaging than a False Negative (letting a junk email slip into the inbox). 
+#    Therefore, we should optimize to minimize False Positives to protect real emails.
+# 
 # Q: Given the costs described above, which type of error does your best model make more often?
-# A: Looking at our saved optimal confusion matrix, the Random Forest model makes 32 
-#    False Negatives (predicting Ham when it was actually Spam) but only 18 False Positives 
-#    (predicting Spam when it was actually Ham). This is an ideal distribution for a real-world 
-#    filter because it naturally defaults to making the less damaging error type more often.
-#
-# Q: Do the Random Forest and Decision Tree models agree on which features matter most? 
-#    Do the results match your intuition?
-# A: Yes, they show strong alignment. Both models rank punctuation and urgency markers—specifically 
-#    char_freq_! and char_freq_$, closely followed by word_freq_remove and word_freq_free—at the 
-#    very top of their feature importance weights. This aligns perfectly with human intuition; 
-#    unsolicited spam is instantly recognizable by aggressive exclamation points, cash symbols, 
-#    and demands to click links to "remove" oneself or claim "free" rewards.
-
+# A: Based on the generated confusion matrix structure:
+#    - False Positives (Top-Right Cell: Actual Ham predicted as Spam) = ~17 errors.
+#    - False Negatives (Bottom-Left Cell: Actual Spam predicted as Ham) = ~33 errors.
+#    The model safely makes False Negative errors (leaking spam) about twice as often 
+#    as False Positive errors, which fits our production goal of protecting real mail.
+# 
+# Q: Do the Random Forest and Decision Tree models agree on which features matter most?
+# A: Yes, they show strong alignment. Both rank punctuation and urgency markers—specifically 
+#    char_freq_! and char_freq_$, along with word_freq_remove—at the very top of their importances.
 
 # --- TASK 4: CROSS-VALIDATION ---
 
@@ -278,38 +272,36 @@ for name, (model, data_array) in cv_experiments.items():
 
 
 # --- TASK 5: BUILDING A PREDICTION PIPELINE ---
-
 print("\n===== TASK 5: PRODUCTION PREDICTION PIPELINES =====")
 
-# 1. Best Tree-Based Pipeline (Random Forest - scale-invariant)
+# 1. Best Tree-Based Pipeline: Random Forest (Scale-invariant)
 tree_pipeline = Pipeline([
     ("classifier", RandomForestClassifier(n_estimators=100, random_state=42))
 ])
 
-# 2. Best Non-Tree-Based Pipeline (Scaled Logistic Regression)
-# Note: Task 3 results showed Scaled Logistic Regression (0.9294) outperformed PCA (0.9186). 
-# Therefore, PCA is omitted from this production pipeline to maintain peak performance.
+# 2. Best Non-Tree-Based Pipeline: StandardScaler + LogisticRegression
+# Justification: Because full-scaled Logistic Regression achieved 92.94% test accuracy 
+# in Task 3 while the PCA version dropped to 91.86%, PCA is omitted here to preserve performance.
 non_tree_pipeline = Pipeline([
     ("scaler", StandardScaler()),
     ("classifier", LogisticRegression(C=1.0, max_iter=1000, solver='liblinear', random_state=42))
 ])
 
+# Fit pipelines
 tree_pipeline.fit(X_train, y_train)
 non_tree_pipeline.fit(X_train, y_train)
 
-print("\nPipeline Architectural Summary:")
-print("- The tree pipeline omits preprocessing steps because forest algorithms are scale-invariant.")
-print("- The non-tree pipeline utilizes StandardScaler to ensure reliable model weight convergence.")
-print("- PCA was excluded because Task 3 experiments demonstrated it slightly degraded the non-tree classifier scores.")
+print("\nPipeline Operational Reflections:")
+print("- The tree pipeline omits a scaling step because Random Forest is scale-invariant.")
+print("- The non-tree pipeline matches our empirical Task 3 data findings: since full-scaled data")
+print("  outperformed PCA-reduced data (92.94% vs 91.86%), PCA was left out to maximize accuracy.")
 
-# Comment:
-# No, they do not share the same structure. The tree-based pipeline consists solely of the final classifier step because 
-# Random Forests use axis-aligned threshold splits and are completely insensitive to feature scales. Conversely, the 
-# non-tree-based pipeline requires an initial StandardScaler step; without it, features with massive raw variations 
-# would disproportionately dominate regularization and model weights relative to tiny word-frequency percentages.
-#
-# Practical Value of Packaging:
-# 1. Eliminates Silent Bugs: It encapsulates the precise order of preprocessing operations, preventing developers from accidentally skipping scaling or introducing data leakage.
-# 2. Streamlines Engineering Handoffs: Instead of distributing separate script files for cleaning, transforming, and predicting, you can hand off or export a single, clean compiled object that accepts raw, unscaled inputs directly.
-# 3. Simplifies Production Deployment: During live server inference, passing an incoming raw email into a single pipeline.predict() call executes everything instantly, matching the exact data transformation state established during model training.
+# Generate pipeline predictions on the unscaled test set
+y_pred_tree_pipe = tree_pipeline.predict(X_test)
+y_pred_non_tree_pipe = non_tree_pipeline.predict(X_test)
 
+print("\n[Verification] Tree-Based Pipeline Classification Report:")
+print(classification_report(y_test, y_pred_tree_pipe))
+
+print("\n[Verification] Non-Tree-Based Pipeline Classification Report:")
+print(classification_report(y_test, y_pred_non_tree_pipe))
