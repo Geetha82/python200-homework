@@ -93,9 +93,9 @@ plt.ylabel("Variance Ratio Summary")
 plt.legend(loc="lower right")
 plt.grid(True, linestyle=":", alpha=0.5)
 plt.tight_layout()
-plt.savefig("outputs/pca_explained_variance.png", dpi=150)
+plt.savefig("outputs/project_pca_variance_explained.png", dpi=150)
 plt.close()
-print("PCA Cumulative Variance plot saved to outputs/pca_explained_variance.png")
+print("PCA Cumulative Variance plot saved to outputs/project_pca_variance_explained.png")
 
 # 6. Transform both sets using the single fitted PCA object and slice to n components
 X_train_pca = pca.transform(X_train_scaled)[:, :n_components_90]
@@ -225,35 +225,48 @@ print("\nSaved optimal charts to outputs/ directory.")
 # ==============================================================================
 # --- TASK 3: CLASSIFIER COMPARISON SUMMARY & REFLECTIONS ---
 # ==============================================================================
-# Q: Which model performs best?
+# Q: Which model performs best overall?
 # A: The Random Forest Classifier performs best, achieving an outstanding raw
 #    test accuracy of 94.57% and leading across all primary metrics.
 # 
-# Q: For the classifiers where you compared PCA vs. non-PCA, which worked better
-#    and does that match your hypothesis from Task 2?
-# A: The non-PCA (full-scaled) models perform better. For Logistic Regression, 
-#    the full-scaled data achieved 92.94% accuracy compared to 91.86% for PCA. 
-#    This matches the hypothesis: spam filtering relies heavily on precise keyword 
-#    presence (like 'free' or '$'). Slicing with linear PCA blurs these sparse, 
-#    highly specific trigger indicators.
+# Q: Compare KNN on scaled data versus PCA-reduced data. Which worked better?
+# A: KNN on fully scaled data (90.77% accuracy) performed better than KNN on the 
+#    PCA-reduced data (90.66% accuracy). This minor performance gap reveals that 
+#    reducing the dataset down to 43 components strips away minor edge-case feature 
+#    variations that are helpful for resolving tight spatial class boundaries.
+# 
+# Q: Compare Logistic Regression on scaled data versus PCA-reduced data. Which worked better?
+# A: Logistic Regression on fully scaled data (92.94% accuracy) cleanly outperformed 
+#    the PCA-reduced version (91.86% accuracy). Slicing feature dimensions hurts performance 
+#    because spam classification is highly dependent on sparse, specific keyword indicators 
+#    (e.g., 'free' or 'remove'). Because linear PCA projects and blends all 64 original 
+#    dimensions into global orthogonal directions, it blurs these distinct, sparse token triggers.
 # 
 # Q: For a spam filter specifically, is accuracy the right metric to optimize,
 #    or would you rather minimize false positives or false negatives? Defend your position.
-# A: Accuracy is the wrong metric because it treats all errors equally. In a spam 
-#    filter, a False Positive (marking an important, legitimate email as spam) is 
-#    far more damaging than a False Negative (letting a junk email slip into the inbox). 
-#    Therefore, we should optimize to minimize False Positives to protect real emails.
+# A: Accuracy is the wrong metric because it treats all errors equally. In an active 
+#    spam filter, a False Positive (marking a critical, legitimate business email as spam) 
+#    is far more damaging than a False Negative (letting a junk email slip into the inbox). 
+#    Therefore, we must optimize to minimize False Positives to protect legitimate communications.
 # 
 # Q: Given the costs described above, which type of error does your best model make more often?
-# A: Based on the generated confusion matrix structure:
-#    - False Positives (Top-Right Cell: Actual Ham predicted as Spam) = ~17 errors.
-#    - False Negatives (Bottom-Left Cell: Actual Spam predicted as Ham) = ~33 errors.
-#    The model safely makes False Negative errors (leaking spam) about twice as often 
-#    as False Positive errors, which fits our production goal of protecting real mail.
+# A: Based on the generated confusion matrix results:
+#    - False Positives (Actual Ham predicted as Spam) = 17 errors.
+#    - False Negatives (Actual Spam predicted as Ham) = 33 errors.
+#    The model safely makes False Negative errors (leaking spam) nearly twice as often 
+#    as False Positive errors, which aligns perfectly with real-world target safety goals.
 # 
 # Q: Do the Random Forest and Decision Tree models agree on which features matter most?
-# A: Yes, they show strong alignment. Both rank punctuation and urgency markers—specifically 
-#    char_freq_! and char_freq_$, along with word_freq_remove—at the very top of their importances.
+# A: Yes, they show strong broad qualitative alignment, though their numerical importance values 
+#    and precise ranking order differ slightly. Both architectures identify punctuation urgency 
+#    markers ('char_freq_$' and 'char_freq_!') and intent indicators ('word_freq_remove') 
+#    within their top three most critical columns.
+#    
+#    However, they disagree on feature distribution density. The single Decision Tree heavily 
+#    over-indexes on 'char_freq_$' (accounting for 38.87% of its total split purity) because it 
+#    picks a single dominant root split. Conversely, the Random Forest distributes its weights 
+#    more evenly across the top features ('char_freq_!' at 11.45% and 'char_freq_$' at 10.28%) 
+#    because it forces its individual decision trees to evaluate randomly selected feature subsets.
 
 # --- TASK 4: CROSS-VALIDATION ---
 
