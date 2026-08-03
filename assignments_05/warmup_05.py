@@ -31,27 +31,9 @@ print(f"[API Q1 Response Text]:\n{text_response}\n")
 print(f"[API Q1 Model Responded]: {model_used}")
 print(f"[API Q1 Total Tokens Used]: {tokens_count}\n")
 
-# API Q2
-print("\n[API Q2]: Testing Diverse Temperature Array Configurations")
 
-prompt_q2 = "Suggest a creative name for a data engineering consultancy."
-temperatures = [0, 0.7, 1.5]
 
-for temp in temperatures:
-    response_q2 = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt_q2}],
-        temperature=temp
-    )
-    
-    # Extract the response text safely
-    text_output = response_q2.choices[0].message.content.strip()
-    
-    # Print each output clearly labeled with its specific temperature setting
-    print(f"Temperature [{temp}]: {text_output}")
-    print("-" * 30)
-
-# --- API Q2 ---
+# API Q2 
 print("\n[API Q2]: Testing Diverse Temperature Array Configurations")
 prompt_q2 = "Suggest a creative name for a data engineering consultancy."
 temperatures = [0, 0.7, 1.5]
@@ -231,8 +213,8 @@ for index, review in enumerate(reviews, start=1):
     
     classification = response_prompt_q1.choices[0].message.content.strip()
     
-    print(f"Review #{index}: '{review}'")
-    print(f"Zero-Shot Label Classification: {classification}")
+    # Printing each result clearly labeled with the review number
+    print(f"Review {index}: {classification}")
 
 
 # Prompt Question 2 — One-Shot
@@ -271,9 +253,8 @@ for index, review in enumerate(reviews, start=1):
     
     classification = response_prompt_q2.choices[0].message.content.strip()
     
-    print(f"Review #{index}: '{review}'")
-    print(f"One-Shot Label Classification: {classification}")
-    print("-" * 40)
+   # Printing each result clearly labeled with the review number
+    print(f"Review {index}: {classification}")
 
 # --- Prompt Q2 Reflection Commentary ---
 # Observation:
@@ -330,9 +311,8 @@ for index, review in enumerate(reviews, start=1):
     
     classification = response_prompt_q3.choices[0].message.content.strip()
     
-    print(f"Review #{index}: '{review}'")
-    print(f"Few-Shot Label Classification: {classification}")
-    print("-" * 40)
+    # Printing each result clearly labeled with the review number
+    print(f"Review {index}: {classification}")
 
 # --- Prompt Q3 Reflection Commentary ---
 # Comparing All Three Approaches (Zero-Shot, One-Shot, Few-Shot):
@@ -414,10 +394,8 @@ system_prompt_q5 = (
 response_prompt_q5 = client.chat.completions.create(
     model="gpt-4o-mini",
     messages=[
-        {"role": "system", "content": system_prompt_q5},
         {"role": "user", "content": f"Review: {review_q5}"}
     ],
-    response_format={"type": "json_object"},  # Forces the API to output a valid JSON string
     temperature=0.0
 )
 

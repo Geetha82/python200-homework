@@ -93,19 +93,11 @@ Bullet points to rewrite:
     raw_response = get_completion(messages, temperature=0.8)
     
     try:
+        # Standalone helper parses and returns data cleanly as requested
         improved_bullets = json.loads(raw_response)
-        
-        print("\n=== RESUME BULLET POINT UPGRADES ===")
-        # FIXED: Bullet points are now explicitly grouped together in pairs for easier comparison
-        for i, item in enumerate(improved_bullets, 1):
-            print(f"\n[Pair #{i}]")
-            print(f" Original: {item.get('original')}")
-            print(f" Improved: {item.get('improved')}")
-            print("  " + "-" * 40)
-        print("====================================")
         return improved_bullets
     except json.JSONDecodeError:
-        print("\nError: The AI failed to return a cleanly parsable JSON structure.")
+        print("\n⚠️ Error: The AI failed to return a cleanly parsable JSON structure.")
         print(f"Raw Output Received:\n{raw_response}")
         return []
 
@@ -243,7 +235,11 @@ def run_chatbot():
             continue # is_safe() already printed the warning message
             
         # 5. Check if the user wants to rewrite bullets
+           
         if "bullet" in user_input.lower() or "resume" in user_input.lower():
+
+            # Record the actual user request turn in conversation history
+            messages.append({"role": "user", "content": user_input})
             print("\nJob Application Helper: Paste your bullet points below, one per line.")
             print("When you're done, type 'DONE' on its own line.\n")
             
@@ -257,18 +253,33 @@ def run_chatbot():
             
             if raw_bullets:
                 print("\nJob Application Helper: Upgrading your bullet points now...")
-                # Call the task function to rewrite and print side-by-side
-                rewrite_bullets(raw_bullets)
                 
-                # Context Management: Track historical actions inside the message list
-                context_summary = f"User updated these resume bullets: {', '.join(raw_bullets)}"
-                messages.append({"role": "user", "content": f"User optimized these bullets: {', '.join(raw_bullets)}"})
-                messages.append({"role": "assistant", "content": "I optimized your resume bullet points using a side-by-side view."})
+                # Call the helper and print the results side-by-side HERE inside the loop
+                results = rewrite_bullets(raw_bullets)
+                
+                if results:
+                    print("\n=== RESUME BULLET POINT UPGRADES ===")
+                    for i, item in enumerate(results, start=1):
+                        print(f"\n[Pair #{i}]")
+                        print(f" Original: {item.get('original')}")
+                        print(f" Improved: {item.get('improved')}")
+                    print("====================================")
+                
+               # Record the exact structured text response that was shown to the user in history
+                assistant_record = "I optimized your resume bullet points. Here are the upgrades:\n" + "\n".join(
+                    f"Original: {item.get('original')} -> Improved: {item.get('improved')}" for item in results
+                )
+                messages.append({"role": "assistant", "content": assistant_record})
             else:
-                print("\nJob Application Helper: No bullet points were entered.")
+                print("\nJob Application Helper: No bullet points were received.")
+                messages.append({"role": "assistant", "content": "No bullet points were provided for rewriting."})
                 
         # 6. Check if the user wants a cover letter
         elif "cover letter" in user_input.lower():
+
+            # Record the actual user request turn in conversation history
+            messages.append({"role": "user", "content": user_input})
+
             job_title = input("Job Application Helper: What is the job title? ").strip()
             background = input("Job Application Helper: Briefly describe your background: ").strip()
             
@@ -282,13 +293,12 @@ def run_chatbot():
                 print("========================================")
                 
                 # Feed this paragraph into history so the model remembers it for next turns
-                messages.append({"role": "user", "content": f"User generated a cover letter opening for a {job_title} role."})
                 messages.append({"role": "assistant", "content": cover_letter_result})
             else:
                 print("\nJob Application Helper: Both job title and background are required.")
-                
+                messages.append({"role": "assistant", "content": "Cover letter generation canceled due to missing input fields."})
+
         # 7. Otherwise, handle it as a regular chat turn
-                # 7. Otherwise, handle it as a regular chat turn
         else:
             # Append the user's input directly into continuous context history
             messages.append({"role": "user", "content": user_input})
