@@ -93,22 +93,22 @@ Bullet points to rewrite:
     raw_response = get_completion(messages, temperature=0.8)
     
     try:
-        # Parse the structured string response back into a Python list of dictionaries
         improved_bullets = json.loads(raw_response)
         
-        # Print results side-by-side dynamically
         print("\n=== RESUME BULLET POINT UPGRADES ===")
-        for item in improved_bullets:
-            print(f"\n[Original]: {item.get('original')}")
-            print(f"\n[Improved]: {item.get('improved')}")
+        # FIXED: Bullet points are now explicitly grouped together in pairs for easier comparison
+        for i, item in enumerate(improved_bullets, 1):
+            print(f"\n[Pair #{i}]")
+            print(f" Original: {item.get('original')}")
+            print(f" Improved: {item.get('improved')}")
+            print("  " + "-" * 40)
         print("====================================")
-        
         return improved_bullets
-        
     except json.JSONDecodeError:
-        print("\n⚠️ Error: The AI failed to return a cleanly parsable JSON structure.")
+        print("\nError: The AI failed to return a cleanly parsable JSON structure.")
         print(f"Raw Output Received:\n{raw_response}")
         return []
+
 
 # TASK 2 REFLECTION & ASSESSMENT COMMENTS:
 # 
@@ -208,6 +208,10 @@ def is_safe(text: str) -> bool:
 
 # ----- Task 5: The Chatbot Loop
 def run_chatbot():
+    """
+    Assembles the setup components into an active conversation environment.
+    Directs workflows automatically based on keywords or casual inquiries.
+    """
     # 1. Initialize conversation history with your system prompt
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT}
@@ -256,7 +260,8 @@ def run_chatbot():
                 # Call the task function to rewrite and print side-by-side
                 rewrite_bullets(raw_bullets)
                 
-                # Update history so the model knows what we did during this branch
+                # Context Management: Track historical actions inside the message list
+                context_summary = f"User updated these resume bullets: {', '.join(raw_bullets)}"
                 messages.append({"role": "user", "content": f"User optimized these bullets: {', '.join(raw_bullets)}"})
                 messages.append({"role": "assistant", "content": "I optimized your resume bullet points using a side-by-side view."})
             else:
@@ -285,16 +290,16 @@ def run_chatbot():
         # 7. Otherwise, handle it as a regular chat turn
                 # 7. Otherwise, handle it as a regular chat turn
         else:
-            # Append the user's message to messages
+            # Append the user's input directly into continuous context history
             messages.append({"role": "user", "content": user_input})
             
-            # Call get_completion(messages)
+            # Request text feedback with the updated history array
             reply = get_completion(messages, temperature=0.7)
             
-            # Print the reply
+            # Print response cleanly to user interface
             print(f"\nJob Application Helper: {reply}\n")
             
-            # Append the reply to messages as an assistant message
+            # Append the assistant's response to keep memory running turn-by-turn
             messages.append({"role": "assistant", "content": reply})
             
 

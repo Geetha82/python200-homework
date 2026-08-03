@@ -27,9 +27,9 @@ model_used = response.model
 tokens_count = response.usage.total_tokens
 
 # Print each output with explicit labels as requested
-print(f"Response Text: {text_response}")
-print(f"Model Responded: {model_used}")
-print(f"Total Tokens Used: {tokens_count}\n")
+print(f"[API Q1 Response Text]:\n{text_response}\n")
+print(f"[API Q1 Model Responded]: {model_used}")
+print(f"[API Q1 Total Tokens Used]: {tokens_count}\n")
 
 # API Q2
 print("\n[API Q2]: Testing Diverse Temperature Array Configurations")
@@ -51,18 +51,35 @@ for temp in temperatures:
     print(f"Temperature [{temp}]: {text_output}")
     print("-" * 30)
 
+# --- API Q2 ---
+print("\n[API Q2]: Testing Diverse Temperature Array Configurations")
+prompt_q2 = "Suggest a creative name for a data engineering consultancy."
+temperatures = [0, 0.7, 1.5]
+
+for temp in temperatures:
+    response_q2 = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt_q2}],
+        temperature=temp
+    )
+    text_output = response_q2.choices[0].message.content.strip()
+    print(f"Temperature [{temp}]: {text_output}")
+    print("-" * 30)
+
 # --- API Q2 Reflection Commentary ---
-# Observation: 
-# Lower temperatures (0 and 0.7) are highly deterministic and focused, 
-# resulting in the exact same concise recommendation ("DataForge Solutions"). 
-# In contrast, setting the temperature to 1.5 introduces extreme variance and randomness, 
-# causing the model to break structure, return a large list of 10 different ideas, 
-# and introduce conversational conversational padding ("Sure! Here are some...").
+# - At temperature 0, the output is completely direct and deterministic, returning 
+#   just a single business name in quotes with no conversational introductory text.
+# - At temperature 0.7, the model introduces creative variance by switching to a structured, 
+#   numbered list of 10 diverse naming ideas wrapped in friendly conversational padding.
+# - At temperature 1.5, the high randomness completely changes the response structure again; 
+#   instead of listing options, it isolates a single name and adds an unprompted, explanatory 
+#   paragraph breaking down the strategic business meaning and reasoning behind the choice.
 #
-# Consistent/Reproducible Choice:
-# I would use temperature 0 if I needed a completely consistent, reproducible output. 
-# A temperature of 0 minimizes randomness, forcing the model to always select the 
-# highest-probability tokens for every single run.
+# Which temperature would you use if you needed a consistent, reproducible output?
+# I would use temperature 0. Setting the temperature to 0 removes token prediction randomness 
+# and forces the model to always select the mathematically highest-probability words. This 
+# guarantees that running the exact same prompt multiple times will yield identical results.
+
 
 # API Q3
 print("\n [API Q3]: Requesting Multiple Completions (n=3) in One API Call")
@@ -95,8 +112,8 @@ truncated_text = response_q4.choices[0].message.content.strip()
 finish_reason = response_q4.choices[0].finish_reason
 
 # Print labeled outputs
-print(f"Truncated Text Response: {truncated_text}")
-print(f"API Stop Reason (finish_reason): {finish_reason}\n")
+print(f"[API Q4 Truncated Text Response]:\n{truncated_text}\n")
+print(f"[API Q4 API Stop Reason (finish_reason)]: {finish_reason}\n")
 
 # --- API Q4 Reflection Commentary ---
 # What Happened:
@@ -200,9 +217,8 @@ reviews = [
 
 system_prompt_q1 = (
     "You are a precise data analysis bot. Classify the sentiment of the user review "
-    "as exactly one of these labels: POSITIVE, NEGATIVE, or MIXED. Do not add punctuation or other text."
+    "using exactly one of these lowercase labels: positive, negative, or mixed. Do not add punctuation, capitalization, or other text."
 )
-
 for index, review in enumerate(reviews, start=1):
     response_prompt_q1 = client.chat.completions.create(
         model="gpt-4o-mini",
@@ -230,8 +246,8 @@ reviews = [
 
 system_prompt_q2 = (
     "You are a precise data analysis bot. Classify the sentiment of the user review "
-    "as exactly one of these labels: POSITIVE, NEGATIVE, or MIXED. Follow the exact "
-    "formatting template shown in the example."
+    "using exactly one of these lowercase labels: positive, negative, or mixed. Follow the exact "
+    "formatting template and casing shown in the example."
 )
 
 for index, review in enumerate(reviews, start=1):
@@ -281,7 +297,7 @@ reviews = [
 
 system_prompt_q3 = (
     "You are a precise data analysis bot. Classify the sentiment of the user review "
-    "as exactly one of these labels: POSITIVE, NEGATIVE, or MIXED. Follow the exact "
+    "using exactly one of these lowercase labels: positive, negative, or mixed. Follow the exact "
     "formatting style and casing shown in the examples."
 )
 
