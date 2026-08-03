@@ -49,19 +49,17 @@ for temp in temperatures:
     print("-" * 30)
 
 # --- API Q2 Reflection Commentary ---
-# - At temperature 0, the output is completely direct and deterministic, returning 
-#   just a single business name in quotes with no conversational introductory text.
-# - At temperature 0.7, the model introduces creative variance by switching to a structured, 
-#   numbered list of 10 diverse naming ideas wrapped in friendly conversational padding.
-# - At temperature 1.5, the high randomness completely changes the response structure again; 
-#   instead of listing options, it isolates a single name and adds an unprompted, explanatory 
-#   paragraph breaking down the strategic business meaning and reasoning behind the choice.
+# What I notice about how the outputs differ:
+# - At temperature 0, the model generated a comprehensive, highly structured, and fully numbered 
+#   list of 10 creative business names wrapped in friendly conversational padding.
+# - At temperature 0.7 and 1.5, the model unexpectedly did the reverse on this run, completely 
+#   collapsing the list structure and returning only a single, direct business name wrapped in 
+#   quotation marks ("DataForge Solutions" and "DataCraft Analytics") with no filler text.
 #
 # Which temperature would you use if you needed a consistent, reproducible output?
 # I would use temperature 0. Setting the temperature to 0 removes token prediction randomness 
 # and forces the model to always select the mathematically highest-probability words. This 
 # guarantees that running the exact same prompt multiple times will yield identical results.
-
 
 # API Q3
 print("\n [API Q3]: Requesting Multiple Completions (n=3) in One API Call")
@@ -258,13 +256,11 @@ for index, review in enumerate(reviews, start=1):
 
 # --- Prompt Q2 Reflection Commentary ---
 # Observation:
-# Yes, adding the one-shot example directly changed the format of the output. 
-# In Q1 (Zero-Shot), the model relied entirely on its internal defaults and the system 
-# instructions, resulting in strict uppercase outputs (e.g., 'POSITIVE', 'MIXED'). 
-# In Q2 (One-Shot), the model mimicked the exact casing of the provided example 
-# ('Sentiment: mixed'), causing it to switch to lowercase outputs ('positive', 'mixed') 
-# for matching cases, though it inconsistently left Review #2 as 'NEGATIVE'. 
-# This shows how strongly a model mirrors the style and case formatting of examples.
+# Comparing the outputs, adding a single one-shot example did not change the format or consistency 
+# of the labels on this run compared to Q1. Because the instructions in both questions explicitly 
+# requested exact lowercase values, the model followed the textual instructions perfectly in Q1, 
+# and the one-shot example in Q2 reinforced this behavior, producing identical, uniform lowercase 
+# outputs ("positive", "negative", "mixed") for all reviews.
 
 
 # Prompt Question 3 — Few-Shot
@@ -315,22 +311,20 @@ for index, review in enumerate(reviews, start=1):
     print(f"Review {index}: {classification}")
 
 # --- Prompt Q3 Reflection Commentary ---
-# Comparing All Three Approaches (Zero-Shot, One-Shot, Few-Shot):
+# Observation on Behavior Change:
+# Adding the few-shot examples completely changed the casing of the output compared to Q1 and Q2. 
+# Even though the system prompt explicitly instructed the model to return lowercase labels, the model 
+# completely prioritized the few-shot pattern, copying the exact shouting uppercase format (POSITIVE, 
+# NEGATIVE, MIXED) used in the examples. This clearly demonstrates that example pattern-matching can 
+# override explicit textual instructions.
 #
-# 1. Zero-Shot (Choose for: Simple, common tasks and rapid prototyping)
-#    - When to choose: Use when the task is straightforward, common, and can be easily 
-#      understood through plain instructions (e.g., standard sentiment analysis or simple 
-#      summaries). It minimizes token costs and prompt complexity.
-#
-# 2. One-Shot (Choose for: Enforcing general syntax, casing, or style constraints)
-#    - When to choose: Use when the model understands the underlying logic perfectly, 
-#      but you need to lock down a specific output layout format (e.g., forcing all-lowercase 
-#      strings or ensuring a raw value is encapsulated inside basic brackets).
-#
-# 3. Few-Shot (Choose for: Edge cases, complex classification, and rigid data pipeline safety)
-#    - When to choose: Use when dealing with specialized industry data, subjective definitions, 
-#      or multi-class tagging constraints. Providing an explicit example for every target label 
-#      removes ambiguity and ensures the model produces stable, predictable responses for downstream code to parse.
+# Comparing All Three Architectural Approaches:
+# 1. Zero-Shot: Best for simple, standard tasks where baseline knowledge is sufficient. It keeps 
+#    prompts simple and minimizes token costs.
+# 2. One-Shot: Chosen when the model understands the logic, but you need to show it a specific 
+#    output layout template or styling constraint.
+# 3. Few-Shot: Crucial for complex categorization boundaries, nuance, or specialized industry text, 
+#    providing a diverse spectrum of reference patterns to clear up ambiguity.
 
 
 # Prompt Question 4 — Chain of Thought
