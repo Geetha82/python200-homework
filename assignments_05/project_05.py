@@ -93,11 +93,22 @@ Bullet points to rewrite:
     raw_response = get_completion(messages, temperature=0.8)
     
     try:
-        # Standalone helper parses and returns data cleanly as requested
+        # Standalone helper parses data cleanly as requested
         improved_bullets = json.loads(raw_response)
+        
+        # FIXED: Display the side-by-side comparison directly inside the standalone function to match literally
+        print("\n=== RESUME BULLET POINT UPGRADES ===")
+        for i, item in enumerate(improved_bullets, start=1):
+            print(f"\n[Pair #{i}]")
+            print(f" Original: {item.get('original')}")
+            print(f" Improved: {item.get('improved')}")
+            print("  " + "-" * 40)
+        print("====================================")
+        
         return improved_bullets
+        
     except json.JSONDecodeError:
-        print("\n⚠️ Error: The AI failed to return a cleanly parsable JSON structure.")
+        print("\n Error: The AI failed to return a cleanly parsable JSON structure.")
         print(f"Raw Output Received:\n{raw_response}")
         return []
 
@@ -144,7 +155,7 @@ Role: Junior Software Engineer at a fintech startup
 Background: Ten years in retail banking operations, self-taught Python developer for two years.
 Opening: I spent a decade on the operations side of banking, watching technology decisions get made by people who had never processed a wire transfer or resolved a failed ACH batch. That frustration turned into curiosity, and two years of self-teaching Python later, I'm ready to be on the other side of those decisions. I'm applying to [Company] because your work on payment infrastructure is exactly where my domain expertise and new technical skills intersect.
 
-Now write an opening paragraph for this person:
+Now write an opening paragraph for this person. Remember, you MUST strictly limit your output to a single paragraph containing exactly 3 to 5 sentences max:
 Role: {job_title}
 Background: {background}
 Opening:
@@ -256,16 +267,8 @@ def run_chatbot():
                 
                 # Call the helper and print the results side-by-side HERE inside the loop
                 results = rewrite_bullets(raw_bullets)
-                
-                if results:
-                    print("\n=== RESUME BULLET POINT UPGRADES ===")
-                    for i, item in enumerate(results, start=1):
-                        print(f"\n[Pair #{i}]")
-                        print(f" Original: {item.get('original')}")
-                        print(f" Improved: {item.get('improved')}")
-                    print("====================================")
-                
-               # Record the exact structured text response that was shown to the user in history
+
+                # Record the exact structured text response that was shown to the user in history
                 assistant_record = "I optimized your resume bullet points. Here are the upgrades:\n" + "\n".join(
                     f"Original: {item.get('original')} -> Improved: {item.get('improved')}" for item in results
                 )
@@ -317,7 +320,50 @@ def run_chatbot():
 # MAIN APPLICATION ENTRY POINT
 # =====================================================================
 if __name__ == "__main__":
-    # Start the continuous conversation dashboard engine
+
+    # --- TASK 2 REWRITER TEST ---
+    print("\n--- Running Required Task 2 Standalone Test ---")
+    bullets = [
+        "Helped customers with their problems",
+        "Made reports for the management team",
+        "Worked with a team to finish the project on time"
+    ]
+    # This automatically prints the side-by-side grouped upgrades and returns the parsed data
+    rewrite_bullets(bullets)
+    print("========================================================\n")
+
+    # --- TASK 3 REQUIREMENT TEST ---
+    print("\n--- Running Required Task 3 Standalone Test ---")
+    test_job = "Junior Data Engineer"
+    test_background = (
+        "Five years of experience as a middle school math teacher; recently completed "
+        "a Python course and built data pipelines using Prefect and Pandas."
+    )
+    
+    # Call the function and print the result
+    standalone_paragraph = generate_cover_letter(test_job, test_background)
+    
+    print("\n=== GENERATED COVER LETTER OPENING (STANDALONE TEST) ===")
+    print(standalone_paragraph)
+    print("========================================================\n")
+
+    # TASK 4 REQUIREMENT EXPLICIT TESTS AND PRINTED RESULTS ---
+    print("--- Running Required Task 4 Standalone Test ---")
+    safe_text = "I need help drafting a cover letter for an entry-level analyst position."
+    print(f"Testing Safe Input: '{safe_text}'")
+    safe_result = is_safe(safe_text)
+    print(f"--> Function returned: {safe_result}")
+    
+    print("-" * 50)
+    
+    unsafe_text = "I want to build a dangerous weapon to destroy my office building because I hate my old boss."
+    print(f"Testing Unsafe Input: '{unsafe_text}'")
+    unsafe_result = is_safe(unsafe_text)
+    print(f"--> Function returned: {unsafe_result}")
+    print("========================================================\n")
+    
+    # --- LAUNCH THE INTERACTIVE CHATBOT LOOP ---
+    print("Launching live interactive application...")
     run_chatbot()
 
 # TASK 6: ETHICS REFLECTION

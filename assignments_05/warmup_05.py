@@ -381,20 +381,19 @@ review_q5 = (
     "but the UI is clunky and the export options are limited."
 )
 
-system_prompt_q5 = (
-    "You are a precise data analysis extraction agent. Analyze the user review and return "
-    "your response ONLY as a valid JSON object. Do not include markdown formatting, backticks, "
-    "or any introductory text. The JSON object must strictly contain these three keys:\n"
-    "1. 'sentiment' (string: 'positive', 'negative', or 'mixed')\n"
-    "2. 'confidence' (float from 0.0 to 1.0)\n"
-    "3. 'reason' (string: exactly one sentence summary)"
-)
+prompt_q5 = f"""
+Analyze the review below and return the result only as valid JSON with keys sentiment, confidence (a float from 0 to 1), and reason (one sentence).
+
+Do not wrap the JSON output in markdown blocks like ```json.
+
+Review: "{review_q5}"
+"""
 
 # Call the API using JSON Mode to enforce schema outputs structurally
 response_prompt_q5 = client.chat.completions.create(
     model="gpt-4o-mini",
     messages=[
-        {"role": "user", "content": f"Review: {review_q5}"}
+        {"role": "user", "content": prompt_q5}
     ],
     temperature=0.0
 )
@@ -410,47 +409,34 @@ print("-" * 40 + "\n")
 try:
     parsed_data = json.loads(raw_json_string)
     
+    # Printed each field separately matching the exact lowercase keys from the task
     print("--- Parsed Fields ---")
-    print(f"Sentiment Label: {parsed_data.get('sentiment')}")
-    print(f"Confidence Metric: {parsed_data.get('confidence')}")
-    print(f"Analytical Reason: {parsed_data.get('reason')}\n")
+    print(f"sentiment: {parsed_data.get('sentiment')}")
+    print(f"confidence: {parsed_data.get('confidence')}")
+    print(f"reason: {parsed_data.get('reason')}\n")
     
 except json.JSONDecodeError as error:
     print(f" Critical Error: The returned payload was not valid JSON! Details: {error}")
     print("Printing raw response for debugging optimization:")
     print(raw_json_string)
 
-
-
-
 # Prompt Question 6 — Delimiters
 print("\n[Prompt Q6]: Evaluating Delimiters for Instruction-Data Isolation\n")
 
-# Global instructions used for both test cases
-system_prompt_q6 = (
-    "You are a precise text-processing assistant. You will be given text inside "
-    "triple backticks. If it contains step-by-step instructions, rewrite them as "
-    "a numbered list. If it does not contain instructions, respond with exactly: "
-    '"No steps provided."'
-)
-
 # Test Case 1: Passage containing explicit step-by-step instructions
-user_text_instructions = (
+user_text = (
     "First boil a pot of water. Once boiling, add a handful of salt and the pasta. "
     "Cook for 8-10 minutes until al dente. Drain and toss with your sauce of choice."
 )
 
-prompt_instructions = f"""
-Please process the following text:
-```{user_text_instructions}```
+prompt = f"""
+You will be given text inside triple backticks. If it contains step-by-step instructions, rewrite them as a numbered list. If it does not contain instructions, respond with exactly: "No steps provided."
+```{user_text}```
 """
 
 response_instructions = client.chat.completions.create(
     model="gpt-4o-mini",
-    messages=[
-        {"role": "system", "content": system_prompt_q6},
-        {"role": "user", "content": prompt_instructions}
-    ],
+    messages=[{"role": "user", "content": prompt}],
     temperature=0.0
 )
 
@@ -466,16 +452,13 @@ user_text_prose = (
 )
 
 prompt_prose = f"""
-Please process the following text:
+You will be given text inside triple backticks. If it contains step-by-step instructions, rewrite them as a numbered list. If it does not contain instructions, respond with exactly: "No steps provided."
 ```{user_text_prose}```
 """
 
 response_prose = client.chat.completions.create(
     model="gpt-4o-mini",
-    messages=[
-        {"role": "system", "content": system_prompt_q6},
-        {"role": "user", "content": prompt_prose}
-    ],
+    messages=[{"role": "user", "content": prompt_prose}],
     temperature=0.0
 )
 
@@ -498,9 +481,8 @@ print(response_prose.choices[0].message.content.strip())
 #    Delimiters establish rigid structural boundaries so the model always knows exactly where 
 #    the developer's instructions end and the raw data payload begins.
 
-# ==========================================
 # Ollama Question 1
-# ==========================================
+
 print("--- Ollama Question 1: OpenAI Response ---")
 
 ollama_comparison_prompt = "Explain what a large language model is in two sentences."
@@ -511,44 +493,53 @@ response_openai = client.chat.completions.create(
     messages=[{"role": "user", "content": ollama_comparison_prompt}],
     temperature=0.0
 )
-
 print(response_openai.choices[0].message.content)
-
 
 """
 ================================================================================
 OLLAMA TERMINAL OUTPUT
 ================================================================================
-A large language model is an AI system designed to understand and generate human-like 
-text, enabling it to learn from vast datasets and perform tasks such as writing, 
-answering questions, and even understanding complex concepts. It leverages massive 
-datasets to improve its comprehension and adaptability over time.
+Thinking... Okay, so I need to explain what a large language model is in two sentences. 
+Let me start by recalling what I know. Large language models are AI models that can 
+understand and generate human language, right? They process a lot of text, so they 
+can learn from a lot of data. That makes them powerful for tasks like writing, 
+translation, etc. Wait, but how to structure that in two sentences? First sentence 
+could mention their ability to understand and generate language, and maybe their 
+training data. Second sentence could talk about their application areas and how they 
+work. Let me make sure I'm not missing anything. Maybe mention that they use a lot 
+of training data to improve their accuracy. Yeah, that should cover it. Let me 
+put that together. ...done thinking. 
+
+A large language model is an advanced AI system designed to understand and generate 
+human language, trained on vast amounts of text to learn patterns and improve accuracy. 
+It processes and analyzes large volumes of information to perform tasks like translation, 
+writing, and information retrieval, making it highly effective in various applications.
 ================================================================================
 """
 
 """
 ANALYSIS & COMPARISON COMMENTS:
-
 1. Differences Noticed Between the Two Responses:
-   - Technical Depth: The OpenAI response was much more technically granular, explicitly 
-     mentioning "deep learning techniques" and "neural networks," whereas the Ollama 
-     qwen3:0.6b model kept its explanation to general descriptions ("AI system", "vast datasets").
-   - Output Verification & Fluff: The local Ollama model exposed its entire raw scratchpad 
-     ("Thinking... Okay, the user wants me to explain...") directly inside the terminal 
-     execution trace, whereas the cloud-based OpenAI API delivered only the final text output.
-   - Phrasing Diversity: The tiny local model showed repetitive linguistic patterns, using 
-     both "vast datasets" and "massive datasets" within a two-sentence span, while the OpenAI 
-     model used cleaner variety.
+- Output Verification & Fluff: The local Ollama model exposed its entire raw scratchpad 
+  ("Thinking... Okay, so I need to explain... ...done thinking.") directly inside the terminal 
+  execution trace because of an active reasoning chain mechanism. In contrast, the cloud-based 
+  OpenAI API delivered only the final text output without exposing an internal monologue.
+- Technical Depth: The OpenAI response was much more technically granular, explicitly referencing 
+  "deep learning techniques" and "neural networks," whereas the Ollama model 
+  kept its core definition restricted to a general description ("advanced AI system", "vast amounts of text").
+- Structural Layout: While both models ultimately followed the two-sentence constraint in their final 
+  answers, the cloud model outputted clean text immediately, whereas the tiny local model mixed its 
+  reasoning steps with the final definition.
 
 2. One Advantage of Running a Model Locally:
-   - Complete Data Privacy and Zero Cost: Your inputs never traverse the public internet to 
-     third-party cloud endpoints, ensuring data isolation. Once downloaded, the inference 
-     is free, bypassing commercial token rate limits or connection subscription costs.
+- Complete Data Privacy and Zero Cost: Your inputs never traverse the public internet to third-party 
+  cloud endpoints, ensuring total data isolation. Once downloaded, the inference runs completely free, 
+  bypassing commercial token rate limits, monthly API bills, or network connection dependencies.
 
 3. One Disadvantage of Running a Model Locally:
-   - Resource Constraints vs. Intelligence Tradeoff: Running models on consumer-tier 
-     hardware restricts you to ultra-low parameter weights (like this 0.6B model). These 
-     suffer from lower reasoning faculties, a smaller baseline knowledge graph, and poor 
-     handling of complex rules compared to massive cloud clusters.
+- Resource Constraints vs. Intelligence Tradeoff: Running models on consumer-tier hardware restricts 
+  you to ultra-low parameter weights (like this 0.6B model). These suffer from lower logical reasoning 
+  faculties, a smaller baseline knowledge graph, slower generation throughput, and high processor 
+  heat/battery drain compared to massive cloud clusters.
 """
 
