@@ -46,22 +46,21 @@ for temp in temperatures:
         temperature=temp
     )
     text_output = response_q2.choices[0].message.content.strip()
-    print(f"[Temperature: {temp}]")
-    print(f"{text_output}")
+    print(f"[API Q2 Run - Temperature {temp}]:") 
+    print(f"{text_output}") 
     print("-" * 40)
 
 # --- API Q2 Reflection Commentary ---
 # What I notice about how the outputs differ:
-# - At temperature 0, the model generated a single, hyper-focused direct company name 
-#   wrapped in quotation marks ("DataForge Solutions") with absolutely no intro or conversational filler.
-# - At temperature 0.7 and 1.5, the output formatting completely changed from the zero baseline; 
-#   instead of a single string, the model switched to generating conversational padding sentences 
-#   followed by comprehensive, highly structured numbered lists containing 10 diverse company name options.
-#
+# - At temperature 0 and 0.7, the model generated identical, hyper-focused direct 
+#   company names ("DataForge Solutions") wrapped in quotation marks with no conversational filler.
+# - At temperature 1.5, the output structure and formatting changed completely from the lower baseline; 
+#   the model switched to generating conversational padding sentences followed by a comprehensive, 
+#   highly structured numbered list containing 10 diverse company name options.
+# 
 # Which temperature would you use if you needed a consistent, reproducible output?
 # I would use temperature 0. Setting the temperature to 0 eliminates prediction variance, forcing 
 # the model to pick the mathematically highest-probability tokens every single time for strict reproducibility.
-print("=" * 60)
 
 
 
