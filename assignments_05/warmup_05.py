@@ -27,9 +27,10 @@ model_used = response.model
 tokens_count = response.usage.total_tokens
 
 # Print each output with explicit labels as requested
-print(f"[API Q1 Response Text]:\n{text_response}\n")
-print(f"[API Q1 Model Responded]: {model_used}")
-print(f"[API Q1 Total Tokens Used]: {tokens_count}\n")
+print(f"Response Text:\n{text_response}\n")
+print(f"Model Responded: {model_used}")
+print(f"Total Tokens Used: {tokens_count}")
+print("=" * 60)
 
 
 
@@ -51,16 +52,18 @@ for temp in temperatures:
 
 # --- API Q2 Reflection Commentary ---
 # What I notice about how the outputs differ:
-# - At temperature 0, the model generated a comprehensive, highly structured, and fully numbered 
-#   list of 10 creative business names wrapped in friendly conversational padding.
-# - At temperature 0.7 and 1.5, the model unexpectedly did the reverse on this run, completely 
-#   collapsing the list structure and returning only a single, direct business name wrapped in 
-#   quotation marks ("DataForge Solutions" and "DataCraft Analytics") with no filler text.
+# - At temperature 0, the model generated a single, hyper-focused direct company name 
+#   wrapped in quotation marks ("DataForge Solutions") with absolutely no intro or conversational filler.
+# - At temperature 0.7 and 1.5, the output formatting completely changed from the zero baseline; 
+#   instead of a single string, the model switched to generating conversational padding sentences 
+#   followed by comprehensive, highly structured numbered lists containing 10 diverse company name options.
 #
 # Which temperature would you use if you needed a consistent, reproducible output?
-# I would use temperature 0. Setting the temperature to 0 removes token prediction randomness 
-# and forces the model to always select the mathematically highest-probability words. This 
-# guarantees that running the exact same prompt multiple times will yield identical results.
+# I would use temperature 0. Setting the temperature to 0 eliminates prediction variance, forcing 
+# the model to pick the mathematically highest-probability tokens every single time for strict reproducibility.
+print("=" * 60)
+
+
 
 # API Q3
 print("\n [API Q3]: Requesting Multiple Completions (n=3) in One API Call")
@@ -97,18 +100,16 @@ print(truncated_text)
 print(f"Stop Reason: {finish_reason}\n")
 
 # --- API Q4 Reflection Commentary ---
-# What Happened:
-# The model abruptly stopped generating text mid-sentence right after the word 'and'.
-# This happened because the 15-token budget limit was hit, causing OpenAI's API 
-# server to stop the generation loop early and return a finish_reason of 'length'.
+# What happened:
+# The model abruptly stopped mid-sentence immediately after the word "and". This truncation occurred 
+# because the strict max_tokens limit of 15 was exhausted before the model could finish the sentence, 
+# resulting in an un-obscured raw text cutoff and an explicit stop reason of "length".
 #
 # Why use max_tokens in a real application:
-# 1. Financial Predictability: It sets a maximum cost limit per request, preventing 
-#    unexpected cloud API billing spikes from long-winded answers.
-# 2. UI Layout Stability: It ensures text responses remain compact, keeping paragraphs 
-#    from overflowing or breaking user interface designs.
-# 3. Infinite Loop Prevention: It acts as a safety guardrail that stops a model if 
-#    it gets stuck in a repetitive loop generating identical words forever.
+# 1. Financial Predictability: It places a firm ceiling on total cost per call, shielding your budget from spikes.
+# 2. UI Layout Safety: It ensures text fields do not overflow boxes, buttons, or custom layout elements.
+# 3. Infinity Loop Mitigation: It acts as an operational fuse if a model starts repeating the same token endlessly.
+print("=" * 60)
 
 
 # --- System Messages and Personas ---
