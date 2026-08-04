@@ -45,8 +45,9 @@ for temp in temperatures:
         temperature=temp
     )
     text_output = response_q2.choices[0].message.content.strip()
-    print(f"Temperature [{temp}]: {text_output}")
-    print("-" * 30)
+    print(f"[Temperature: {temp}]")
+    print(f"{text_output}")
+    print("-" * 40)
 
 # --- API Q2 Reflection Commentary ---
 # What I notice about how the outputs differ:
@@ -92,8 +93,8 @@ truncated_text = response_q4.choices[0].message.content.strip()
 finish_reason = response_q4.choices[0].finish_reason
 
 # Print labeled outputs
-print(f"[API Q4 Truncated Text Response]:\n{truncated_text}\n")
-print(f"[API Q4 API Stop Reason (finish_reason)]: {finish_reason}\n")
+print(truncated_text)
+print(f"Stop Reason: {finish_reason}\n")
 
 # --- API Q4 Reflection Commentary ---
 # What Happened:
@@ -218,12 +219,6 @@ for index, review in enumerate(reviews, start=1):
 # Prompt Question 2 — One-Shot
 print("\n[Prompt Q2]: Evaluating One-Shot Text Sentiment Classification\n")
 
-reviews = [
-    "The onboarding process was smooth and the team was welcoming.",
-    "The software crashes constantly and support never responds.",
-    "Great price, but the documentation is nearly impossible to follow."
-]
-
 system_prompt_q2 = (
     "You are a precise data analysis bot. Classify the sentiment of the user review "
     "using exactly one of these lowercase labels: positive, negative, or mixed. Follow the exact "
@@ -265,12 +260,6 @@ for index, review in enumerate(reviews, start=1):
 
 # Prompt Question 3 — Few-Shot
 print("\n[Prompt Q3]: Evaluating Few-Shot Text Sentiment Classification\n")
-
-reviews = [
-    "The onboarding process was smooth and the team was welcoming.",
-    "The software crashes constantly and support never responds.",
-    "Great price, but the documentation is nearly impossible to follow."
-]
 
 system_prompt_q3 = (
     "You are a precise data analysis bot. Classify the sentiment of the user review "
@@ -376,9 +365,12 @@ review_q5 = (
 )
 
 prompt_q5 = f"""
-Analyze the review below and return the result only as valid JSON with keys sentiment, confidence (a float from 0 to 1), and reason (one sentence).
+Analyze the review below. Return the result as valid JSON only. Do not include any introductory text, markdown blocks, backticks, or other code formatting. 
 
-Do not wrap the JSON output in markdown blocks like ```json.
+The JSON object must contain exactly these three keys:
+sentiment
+confidence (a float from 0 to 1)
+reason (one sentence)
 
 Review: "{review_q5}"
 """
@@ -404,7 +396,7 @@ try:
     parsed_data = json.loads(raw_json_string)
     
     # Printed each field separately matching the exact lowercase keys from the task
-    print("--- Parsed Fields ---")
+    print("Parsed Fields:")
     print(f"sentiment: {parsed_data.get('sentiment')}")
     print(f"confidence: {parsed_data.get('confidence')}")
     print(f"reason: {parsed_data.get('reason')}\n")

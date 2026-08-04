@@ -93,25 +93,11 @@ Bullet points to rewrite:
     raw_response = get_completion(messages, temperature=0.8)
     
     try:
-        # Standalone helper parses data cleanly as requested
-        improved_bullets = json.loads(raw_response)
-        
-        # Display the side-by-side comparison directly inside the standalone function to match literally
-        print("\n=== RESUME BULLET POINT UPGRADES ===")
-        for i, item in enumerate(improved_bullets, start=1):
-            print(f"\n[Pair #{i}]")
-            print(f" Original: {item.get('original')}")
-            print(f" Improved: {item.get('improved')}")
-            print("  " + "-" * 40)
-        print("====================================")
-        
-        return improved_bullets
-        
+        # FIXED: Standalone helper strictly handles JSON string decoding with ZERO internal printing behavior
+        return json.loads(raw_response)
     except json.JSONDecodeError:
-        print("\n Error: The AI failed to return a cleanly parsable JSON structure.")
-        print(f"Raw Output Received:\n{raw_response}")
         return []
-
+        
 # TASK 2 REFLECTION & ASSESSMENT COMMENTS:
 # 
 # 1. Why the starter bullets are weak:
@@ -210,20 +196,12 @@ def is_safe(text: str) -> bool:
 
 # TASK 5: THE CHATBOT LOOP (UNIFIED CONVERSATIONAL STATE MACHINE)
 def run_chatbot():
-    """
-    Assembles the setup components into an active conversation environment.
-    Maintains a single coherent turn-by-turn interaction flow for all inputs.
-    """
+
     # 1. Initialize conversation history with your system prompt
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT}
     ]
-    
-    # Unified conversational state pointers to manage logic sequentially
-    current_mode = "chat"  # Options: "chat", "collect_bullets", "collect_cl_job", "collect_cl_bg"
-    temp_bullets = []
-    temp_job_title = ""
-    
+        
     print("=" * 50)
     print("Job Application Helper")
     print("=" * 50)
@@ -250,132 +228,92 @@ def run_chatbot():
         if not is_safe(user_input):
             continue  
             
-        # -------------------------------------------------------------
-        # STATE: BULLET REWRITER TURN-BY-TURN COLLECTION
-        # -------------------------------------------------------------
-        if current_mode == "collect_bullets":
-            if user_input.upper() == "DONE":
-                if temp_bullets:
-                    print("\nJob Application Helper: Upgrading your bullet points now...")
-                    
-                    # Call standalone helper (prints side-by-side inside its own body)
-                    results = rewrite_bullets(temp_bullets)
-                    
-                    # History is explicitly preserved to keep memory consistent across all turns
-                    assistant_record = "I optimized your resume bullet points. Here are the upgrades:\n" + "\n".join(
-                        f"Original: {item.get('original')} -> Improved: {item.get('improved')}" for item in results
-                    )
-                    messages.append({"role": "user", "content": f"[Submitted bullets for upgrade: {', '.join(temp_bullets)}]"})
-                    messages.append({"role": "assistant", "content": assistant_record})
-                else:
-                    print("\nJob Application Helper: No bullet points were received.")
-                    messages.append({"role": "assistant", "content": "No bullets were provided."})
-                
-                # Revert state back to freeform chat context
-                current_mode = "chat"
-                temp_bullets = []
-                print("\nJob Application Helper: Back in general chat mode. What else can I assist with?\n")
-            else:
-                # Collect the bullet line through the single main loop and continue
-                temp_bullets.append(user_input)
-            continue
-
-        # -------------------------------------------------------------
-        # STATE: COVER LETTER STEP-BY-STEP DIALOGUE FLOWS
-        # -------------------------------------------------------------
-        elif current_mode == "collect_cl_job":
-            temp_job_title = user_input
-            messages.append({"role": "user", "content": f"Target job title: {temp_job_title}"})
-            
-            # Guide user conversational flow dynamically
-            reply = "Got it. Now, briefly describe your background for this role:"
-            print(f"\nJob Application Helper: {reply}\n")
-            messages.append({"role": "assistant", "content": reply})
-            
-            current_mode = "collect_cl_bg"
-            continue
-            
-        elif current_mode == "collect_cl_bg":
-            user_background = user_input
-            messages.append({"role": "user", "content": f"User background: {user_background}"})
-            
-            print("\nJob Application Helper: Crafting your high-impact opening paragraph...")
-            cover_letter_result = generate_cover_letter(temp_job_title, user_background)
-            
-            print("\n=== GENERATED COVER LETTER OPENING ===")
-            print(cover_letter_result)
-            print("========================================")
-            
-            # History saves exact final response output directly
-            messages.append({"role": "assistant", "content": cover_letter_result})
-            
-            # Revert state back to freeform chat context
-            current_mode = "chat"
-            print("\nJob Application Helper: Cover letter generated. How else can I help you today?\n")
-            continue
-
-        # -------------------------------------------------------------
-        # KEYWORD INTERCEPTION LAYER
-        # -------------------------------------------------------------
-        elif "bullet" in user_input.lower() or "resume" in user_input.lower():
+        # 5. Check if the user wants to rewrite bullets
+        if "bullet" in user_input.lower() or "resume" in user_input.lower():
+            # Append user turn to history to maintain clean conversation memory consistency
             messages.append({"role": "user", "content": user_input})
             
-            reply = "Paste your bullet points below, one per line. When you're done, type 'DONE' on its own line."
-            print(f"\nJob Application Helper: {reply}\n")
-            messages.append({"role": "assistant", "content": reply})
+            print("\nJob Application Helper: Paste your bullet points below, one per line.")
+            print("When you're done, type 'DONE' on its own line.\n")
             
-            current_mode = "collect_bullets"
-            
+            # Bullet points are gathered locally via a clean, nested inner loop
+            raw_bullets = []
+            while True:
+                line = input().strip()
+                if line.upper() == "DONE":
+                    break
+                if line:
+                    raw_bullets.append(line)
+                    
+            if raw_bullets:
+                print("\nJob Application Helper: Upgrading your bullet points now...")
+                
+                # Call rewrite_bullets() helper (which calculates and parses natively)
+                results = rewrite_bullets(raw_bullets)
+                
+                # Handles ALL side-by-side display behavior cleanly here in one single place
+                if results:
+                    print("\n=== RESUME BULLET POINT UPGRADES ===")
+                    for i, item in enumerate(results, start=1):
+                        print(f"\n[Pair #{i}]")
+                        print(f" Original: {item.get('original')}")
+                        print(f" Improved: {item.get('improved')}")
+                        print("  " + "-" * 40)
+                    print("====================================")
+                    
+                    # Store exact output text back to context memory array safely
+                    assistant_record = "I optimized your resume bullet points. Upgrades:\n" + "\n".join(
+                        f"Original: {item.get('original')} -> Improved: {item.get('improved')}" for item in results
+                    )
+                    messages.append({"role": "assistant", "content": assistant_record})
+                else:
+                    print("\nJob Application Helper: Could not parse upgrades.")
+                    messages.append({"role": "assistant", "content": "Failed to rewrite bullet points."})
+            else:
+                print("\nJob Application Helper: No bullet points received.")
+                messages.append({"role": "assistant", "content": "No bullets provided."})
+
+        # 6. Check if the user wants a cover letter
         elif "cover letter" in user_input.lower():
             messages.append({"role": "user", "content": user_input})
             
-            reply = "I can help write that opening paragraph. First, what is the job title you are applying for?"
-            print(f"\nJob Application Helper: {reply}\n")
-            messages.append({"role": "assistant", "content": reply})
+            # FIXED: Reverted to linear, standard nested input prompts with zero state handling
+            job_title = input("Job Application Helper: What is the job title? ").strip()
+            background = input("Job Application Helper: Briefly describe your background: ").strip()
             
-            current_mode = "collect_cl_job"
-            
-        # -------------------------------------------------------------
-        # 7. REGULAR CHAT PATH (SEQUENTIAL HISTORY TRACKING)
-        # -------------------------------------------------------------
+            if job_title and background:
+                print("\nJob Application Helper: Crafting your high-impact opening paragraph...")
+                
+                # Loop directly calls the task function and prints the paragraph result cleanly
+                cover_letter_result = generate_cover_letter(job_title, background)
+                
+                print("\n=== GENERATED COVER LETTER OPENING ===")
+                print(cover_letter_result)
+                print("========================================")
+                
+                messages.append({"role": "assistant", "content": cover_letter_result})
+            else:
+                print("\nJob Application Helper: Both job title and background are required.")
+                messages.append({"role": "assistant", "content": "Canceled cover letter due to blank field data."})
+        # 7. Otherwise, handle it as a regular chat turn
         else:
+            # - Append the user's message to `messages`
             messages.append({"role": "user", "content": user_input})
+            
+            # - Call get_completion(messages)
             reply = get_completion(messages, temperature=0.7)
+            
+            # - Print the reply
             print(f"\nJob Application Helper: {reply}\n")
+            
+            # - Append the reply to `messages` as an assistant message
             messages.append({"role": "assistant", "content": reply})
-
 
         
 # =====================================================================
 # MAIN APPLICATION ENTRY POINT
 # =====================================================================
 if __name__ == "__main__":
-    # --- STANDALONE TESTS (COMMENTED OUT TO BOOT CLEANLY AS REQUESTED BY REVIEWER) ---
-    # These test cases are safely retained as code history to satisfy the original task 
-    # instructions without cluttering the screen when launching the program loop.
-    #
-    # # --- TASK 2 STANDALONE TEST ---
-    # starter_bullets = [
-    #     "Helped customers with their problems",
-    #     "Made reports for the management team",
-    #     "Worked with a team to finish the project on time"
-    # ]
-    # rewrite_bullets(starter_bullets)
-    #
-    # # --- TASK 3 STANDALONE TEST ---
-    # test_job = "Junior Data Engineer"
-    # test_background = (
-    #     "Five years of experience as a middle school math teacher; recently completed "
-    #     "a Python course and built data pipelines using Prefect and Pandas."
-    # )
-    # generate_cover_letter(test_job, test_background)
-    #
-    # # --- TASK 4 STANDALONE TEST ---
-    # is_safe("I need help drafting a cover letter for an entry-level analyst position.")
-    # is_safe("I want to build a dangerous weapon to destroy my office building.")
-    # ===========================================================================
-    
-    # Boots directly into the live interactive chat helper loop instantly
     run_chatbot()
 
 # TASK 6: ETHICS REFLECTION
