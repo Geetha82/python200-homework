@@ -93,27 +93,46 @@ Bullet points to rewrite:
     raw_response = get_completion(messages, temperature=0.8)
     
     try:
-        # FIXED: Standalone helper strictly handles JSON string decoding with ZERO internal printing behavior
-        return json.loads(raw_response)
-    except json.JSONDecodeError:
+        # Parse data cleanly from the raw response string
+        improved_bullets = json.loads(raw_response)
+        
+        # FIXED: Prints the original and improved bullets side-by-side INSIDE the function as requested
+        print("\n=== RESUME BULLET POINT UPGRADES ===")
+        for i, item in enumerate(improved_bullets, start=1):
+            print(f"\n[Pair #{i}]")
+            print(f" Original: {item.get('original')}")
+            print(f" Improved: {item.get('improved')}")
+            print("  " + "-" * 40)
+        print("====================================")
+        
+        return improved_bullets
+        
+    except json.JSONDecodeError as error:
+        # FIXED: Help debug the prompt by printing the error and the raw model response instead of failing silently
+        print(f"\n⚠️ JSON Parse Failure: {error}")
+        print("--- Raw Unparsed Model Response ---")
+        print(raw_response)
+        print("----------------------------------")
         return []
         
-# TASK 2 REFLECTION & ASSESSMENT COMMENTS:
+# --- Task 2 Reflection Commentary ---
 # 
 # 1. Why the starter bullets are weak:
-# - They are purely task-focused ("Helped", "Made", "Worked") and lack impact metrics.
-# - They do not mention *how* the work was done or *what* organizational benefit resulted.
-# - There are no descriptive technical keywords or industry verbs.
+# - Passive/Vague Action Verbs: They rely on generic, low-impact words ("Helped", "Made", "Worked") 
+#   that outline basic task actions instead of showing high-level accomplishments.
+# - Missing How/Results: They do not explain *how* the work was done, *what* tools or methodologies 
+#   were applied, or *what* positive business value resulted from the actions.
+# - No Professional Jargon: They read like a basic daily chore check-list rather than emphasizing 
+#   highly transferable white-collar skills.
 # 
-# 2. The kinds of changes the model suggested:
-# - Swapped passive verbs for strategic ones ("Resolved", "Compiled and presented", "Collaborated").
-# - Added high-value professional phrasing ("enhancing satisfaction and retention", "cross-functional team").
-# - Framed the tasks around business value ("driving informed decision-making through data analysis", "high-quality deliverables").
-# 
-# 3. Code Verification Checks:
-# - JSON Check: json.loads() succeeded perfectly without errors because we restricted raw text.
-# - Layout Check: Both original and improved versions print cleanly with icons side-by-side.
-# - Quality Check: The improvements feel meaningfully better and look much more professional.
+# 2. The kinds of changes the model suggested (Grounded in Actual Terminal Output):
+# - Swapped Verbs for Strategic Actions: It upgraded weak verbs into strong professional options 
+#   such as "Resolved", "Compiled and presented", and "Collaborated".
+# - Injected Business Value/Outcomes: It framed simple chores around major corporate impacts, adding 
+#   consequences like "enhancing satisfaction and loyalty" and "enabling informed decision-making."
+# - Contextualized Skill Complexity: It transformed a basic task like "worked with a team" into an 
+#   advanced career skill by rephrasing it as "collaborating with a cross-functional team" to deliver 
+#   "project milestones ahead of schedule."
 
 
 # ----- Task 3: Cover Letter Generator
@@ -248,30 +267,21 @@ def run_chatbot():
             if raw_bullets:
                 print("\nJob Application Helper: Upgrading your bullet points now...")
                 
-                # Call rewrite_bullets() helper (which calculates and parses natively)
+                # Simple call executes and prints the upgrades exactly ONCE since print loop lives in the function
                 results = rewrite_bullets(raw_bullets)
                 
-                # Handles ALL side-by-side display behavior cleanly here in one single place
                 if results:
-                    print("\n=== RESUME BULLET POINT UPGRADES ===")
-                    for i, item in enumerate(results, start=1):
-                        print(f"\n[Pair #{i}]")
-                        print(f" Original: {item.get('original')}")
-                        print(f" Improved: {item.get('improved')}")
-                        print("  " + "-" * 40)
-                    print("====================================")
-                    
-                    # Store exact output text back to context memory array safely
+                    # Store exact text back to memory context array
                     assistant_record = "I optimized your resume bullet points. Upgrades:\n" + "\n".join(
                         f"Original: {item.get('original')} -> Improved: {item.get('improved')}" for item in results
                     )
                     messages.append({"role": "assistant", "content": assistant_record})
                 else:
-                    print("\nJob Application Helper: Could not parse upgrades.")
                     messages.append({"role": "assistant", "content": "Failed to rewrite bullet points."})
             else:
                 print("\nJob Application Helper: No bullet points received.")
                 messages.append({"role": "assistant", "content": "No bullets provided."})
+                
 
         # 6. Check if the user wants a cover letter
         elif "cover letter" in user_input.lower():
