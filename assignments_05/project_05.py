@@ -247,15 +247,13 @@ def run_chatbot():
         if not is_safe(user_input):
             continue  
             
-        # 5. Check if the user wants to rewrite bullets
+         # 5. Check if the user wants to rewrite bullets
         if "bullet" in user_input.lower() or "resume" in user_input.lower():
-            # Append user turn to history to maintain clean conversation memory consistency
             messages.append({"role": "user", "content": user_input})
             
             print("\nJob Application Helper: Paste your bullet points below, one per line.")
             print("When you're done, type 'DONE' on its own line.\n")
             
-            # Bullet points are gathered locally via a clean, nested inner loop
             raw_bullets = []
             while True:
                 line = input().strip()
@@ -267,27 +265,29 @@ def run_chatbot():
             if raw_bullets:
                 print("\nJob Application Helper: Upgrading your bullet points now...")
                 
-                # Simple call executes and prints the upgrades exactly ONCE since print loop lives in the function
+                # The function is called, prints side-by-side internally, and returns the parsed list
                 results = rewrite_bullets(raw_bullets)
                 
                 if results:
-                    # Store exact text back to memory context array
-                    assistant_record = "I optimized your resume bullet points. Upgrades:\n" + "\n".join(
-                        f"Original: {item.get('original')} -> Improved: {item.get('improved')}" for item in results
-                    )
-                    messages.append({"role": "assistant", "content": assistant_record})
+                    # HARDENED HISTORY FORMAT: Formatted cleanly as a markdown block so the AI retains 
+                    # clear knowledge of your background updates in future turns
+                    history_summary = "I have successfully optimized your resume bullet points. Here are the upgrades:\n\n"
+                    for idx, item in enumerate(results, start=1):
+                        history_summary += f"Pair #{idx}:\n- Original: {item.get('original')}\n- Improved: {item.get('improved')}\n\n"
+                    
+                    messages.append({"role": "assistant", "content": history_summary})
                 else:
-                    messages.append({"role": "assistant", "content": "Failed to rewrite bullet points."})
+                    messages.append({"role": "assistant", "content": "Attempted to rewrite bullets, but an error occurred."})
             else:
                 print("\nJob Application Helper: No bullet points received.")
-                messages.append({"role": "assistant", "content": "No bullets provided."})
+                messages.append({"role": "assistant", "content": "No bullet points were provided for rewriting."})
                 
 
         # 6. Check if the user wants a cover letter
         elif "cover letter" in user_input.lower():
             messages.append({"role": "user", "content": user_input})
             
-            # FIXED: Reverted to linear, standard nested input prompts with zero state handling
+            #  Reverted to linear, standard nested input prompts with zero state handling
             job_title = input("Job Application Helper: What is the job title? ").strip()
             background = input("Job Application Helper: Briefly describe your background: ").strip()
             
@@ -301,10 +301,12 @@ def run_chatbot():
                 print(cover_letter_result)
                 print("========================================")
                 
-                messages.append({"role": "assistant", "content": cover_letter_result})
+                # HARDENED HISTORY FORMAT: Stores the complete, clean paragraph output directly to history
+                messages.append({"role": "assistant", "content": f"Here is the generated cover letter opening paragraph for the {job_title} role:\n\n{cover_letter_result}"})
             else:
                 print("\nJob Application Helper: Both job title and background are required.")
-                messages.append({"role": "assistant", "content": "Canceled cover letter due to blank field data."})
+                messages.append({"role": "assistant", "content": "Cover letter generation canceled due to missing user fields."})
+
         # 7. Otherwise, handle it as a regular chat turn
         else:
             # - Append the user's message to `messages`
