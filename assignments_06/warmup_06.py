@@ -1,14 +1,12 @@
 
-
-import string
-from openai import OpenAI
-from dotenv import load_dotenv
 import os
-
-# Explicitly import structural modules supported by core 0.14.10
-from llama_index.core import SimpleDirectoryReader, VectorStoreIndex, Settings
+import string
+from pathlib import Path
+from dotenv import load_dotenv
+from openai import OpenAI
+from llama_index.core import SimpleDirectoryReader, VectorStoreIndex,Settings
 from llama_index.embeddings.openai import OpenAIEmbedding
-from llama_index.readers.file import PyMuPDFReader  # Fixed default pypdf parsing anomalies
+from llama_index.core.evaluation import FaithfulnessEvaluator, RelevancyEvaluator
 
 
 # ----- ENVIRONMENT INITIALIZATION ----- #
@@ -17,8 +15,8 @@ if load_dotenv():
 else:
     print("Warning: could not load API key. Check your .env file.")
 
-# Initialize the standard OpenAI developer client utility
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Configure the global embedding model for LlamaIndex
+Settings.embed_model = OpenAIEmbedding(model="text-embedding-3-small")
 
 
 # --- RAG Concepts ---
@@ -30,17 +28,19 @@ print("Scenario B Best Approach: Fine-Tuning")
 print("Scenario C Best Approach: Prompt Engineering (Context Injection)")
 print("=" * 60)
 
-"""
-Concepts Q1 Reflection Commentary:
+# Concepts Q1 Reflection Commentary:
+# Scenario A: Retrieval-Augmented Generation (RAG) is best because the legal team needs to query an 
+# internal library of hundreds of dynamically changing PDFs that update quarterly. RAG handles frequent 
+# document database updates effortlessly by swapping or expanding data vectors without costly model retraining cycles.
+#
+# Scenario B: Fine-Tuning is best because the startup wants the model to learn a highly specific, niche brand 
+# voice and formatting style across 3,000 in-house training examples. Fine-tuning adjusts the base model's inner 
+# weight matrices, making it perfect for teaching a distinct linguistic style that does not appear online.
+#
+# Scenario C: Prompt Engineering (Context Injection) is best because the analyst is asking questions about a single, 
+# static, two-page report as a one-off task. Directly placing the text payload into the prompt context window 
+# alongside the question is the most efficient, direct, and zero-overhead approach.
 
-Scenario C Justification:
-Prompt Engineering via Context Injection is the optimal choice here because the task involves a 
-one-off, isolated question regarding a single short report. Since the target text is small enough 
-to comfortably fit well within the standard context window of modern LLMs, building out a complex 
-Retrieval-Augmented Generation (RAG) database architecture or executing a costly Fine-Tuning lifecycle 
-would introduce unnecessary engineering overhead and token waste. Directly placing the clean text payload 
-straight into the prompt alongside the question provides the most direct, efficient, and cost-effective solution.
-"""
 
 # Concepts Q2
 print("\n=== Concepts Question 2 ===")
@@ -72,10 +72,7 @@ with technical competence, they drop their analytical guard and uncritically tru
 print("\n=== Concepts Question 3 ===")
 print("RAG Pipeline Sequence Arranged Chronologically in Comments.")
 print("=" * 60)
-# Concepts Q3
-print("\n=== Concepts Question 3 ===")
-print("RAG Pipeline Sequence Arranged Chronologically in Comments.")
-print("=" * 60)
+
 
 """
 Concepts Q3 Reflection Commentary:
@@ -177,12 +174,20 @@ print(f"\n[Result Label] Selected Document Name: {selected_doc_name_k2}")
 print("=" * 60)
 
 # ANSWER Q2:
-# Selected Document: None found
-# Right or Wrong: Wrong. Humans know 'menu.txt' is best because pastries and milks are caffeine-free.
-# Why it failed: Keyword search checks for literal string overlaps. Because words like 'caffeine' 
-# or 'anything' do not appear verbatim inside 'menu.txt', its overlap score dropped to 0.
-# Better System: Dense semantic retrieval using Vector Embeddings would perform better here by 
-# mapping contextual relationships (food/milk are related to caffeine-free choices) instead of character matching.
+# Which document was selected:
+# None found (The function returned a fallback result indicating no overlapping keywords were discovered).
+# 
+# Whether keyword RAG got this right — and why or why not:
+# No, keyword RAG did not get this right. A human reader easily understands that 'menu.txt' contains 
+# the requested information since pastries and non-dairy milks are naturally caffeine-free alternatives. 
+# However, keyword search relies entirely on literal token overlaps. Because the specific words 'anything' 
+# and 'caffeine' do not appear verbatim anywhere inside the 'menu.txt' string, its overlap score dropped 
+# to 0 across the entire index, leading to a complete retrieval failure.
+# 
+# What kind of retrieval would do better here:
+# Dense semantic retrieval using Vector Embeddings would perform much better here. Semantic retrieval measures 
+# conceptual similarity and contextual proximity rather than checking for rigid character spelling matches, 
+# allowing it to recognize that food items and non-dairy milks are semantically related to choices "without caffeine".
 
 
 # Keyword Q3
