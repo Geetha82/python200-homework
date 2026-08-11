@@ -11,40 +11,23 @@ from llama_index.core import VectorStoreIndex
 # STEP 1: INITIALIZATION & ENVIRONMENT SETUP
 print(f"\nStep 1: Setup\n")
 
-# Load environment configuration variables from .env
+# Load environment configuration variables from the active environment file
 load_dotenv()
 
-# Verify and extract the OpenAI API Key from environment memory
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
+# Verify and extract the active OpenAI API key from system variables
+if not os.getenv("OPENAI_API_KEY"):
     raise ValueError("[Initialization Error]: OPENAI_API_KEY is missing from your .env configuration.")
 
-# Initialize the standard OpenAI connection client
-client = OpenAI(api_key=api_key)
 print("[System Log]: OpenAI client successfully initialized with active API Key configuration.")
 
-project_candidates = [
-    Path("lessons/06_AI_augmentation/resources/groundwork_docs"),
-    Path("../lessons/06_AI_augmentation/resources/groundwork_docs"),
-    Path("../python-200-v1/lessons/06_AI_augmentation/resources/groundwork_docs"),
-    Path("./groundwork_docs")
-]
+# Direct path definition to comply strictly with instruction parameters
+docs_dir = Path("assignments_06/lessons/06_AI_augmentation/resources/groundwork_docs")
 
-docs_dir = None
-for candidate in project_candidates:
-    if candidate.exists() and candidate.is_dir():
-        docs_dir = candidate
-        print(f"[System Log]: Valid project directory located at: '{docs_dir}'")
-        break
-
-if docs_dir is None:
-    docs_dir = Path("lessons/06_AI_augmentation/resources/groundwork_docs")
-
-# Defensive Guard: Halt execution immediately if data directories are missing
-assert docs_dir.exists(), f"[Critical Error] Document directory not found at: {docs_dir.resolve()}. Please create the folder and populate your .txt files."
-
+# Step 1 Mandate: Enforce path presence with a defensive assertion stop check
+assert docs_dir.exists(), f"[Critical Error] Document directory not found: {docs_dir}"
 print(f"[System Log]: Workspace path check passed. Groundwork documents directory found at: '{docs_dir}'")
 print("=" * 70)
+
 
 # STEP 2: LOAD THE DOCUMENTS VIA SIMPLEDIRECTORYREADER
 print(f"\nStep 2: Load the Documents\n")

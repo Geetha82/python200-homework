@@ -7,6 +7,7 @@ from openai import OpenAI
 from llama_index.core import SimpleDirectoryReader, VectorStoreIndex,Settings
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.core.evaluation import FaithfulnessEvaluator, RelevancyEvaluator
+from llama_index.readers.file import PyMuPDFReader
 
 
 # ----- ENVIRONMENT INITIALIZATION ----- #
@@ -157,11 +158,18 @@ print(f"\n[Result Label] Selected Document Name: {selected_doc_name}")
 print("=" * 60)
 
 # ANSWER Q1: 
-# Selected Document: loyalty.txt
-# Why: The word 'your' was not filtered out by the stopwords list, making it an active search token. 
-# This created a three-way tie where 'hours.txt' (matching 'weekends'), 'hiring.txt' (matching 'your'), 
-# and 'loyalty.txt' (matching 'your') each scored an overlap of 1. Because of this tie, the sorting 
-# algorithm fell back to internal alphabetical file placement order and returned 'loyalty.txt'.
+# Which document was selected:
+# loyalty.txt
+# 
+# Why: 
+# Because conversational words like 'what' and 'your' are absent from the assignment's baseline stopwords list, 
+# they are treated as active search tokens, resulting in the filtered query tokens: ['hours', 'weekends', 'what', 'your'].
+# This creates a literal three-way overlap score tie of exactly 1 among 'hours.txt' (matching 'weekends'), 
+# 'hiring.txt' (matching 'your'), and 'loyalty.txt' (matching 'your'). 
+# When scores.sort(reverse=True) evaluates the list of tuples (score, name, content), Python breaks identical score 
+# ties by evaluating the secondary tuple element ('name') in reverse alphabetical order. Since the string name 
+# 'loyalty.txt' is alphabetically greater than 'hours.txt' and 'hiring.txt', it sorts to the top position, 
+# forcing the function to select 'loyalty.txt' as the best match despite it being contextually incorrect.
 
 
 # Keyword Q2
@@ -386,7 +394,6 @@ except Exception as e:
 print("=" * 60)
 
 # --- LlamaIndex Q2 Reflection Commentary ---
-# --- LlamaIndex Q2 Post-Execution Reflection Commentary ---
 """
 Observations and Performance Evaluation:
 
