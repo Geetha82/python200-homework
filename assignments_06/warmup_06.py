@@ -284,7 +284,7 @@ Settings.embed_model = OpenAIEmbedding(model="text-embedding-3-small")
 
 # Path Setup: Point SimpleDirectoryReader to the precise relative folder path discovered in the repo layout
 # Path Setup: Point SimpleDirectoryReader to the official lesson path relative to this script
-brightleaf_path = "brightleaf_pdfs"
+brightleaf_path = "lessons/06_AI_augmentation/resources/brightleaf_pdfs"
 
 print(f"[System Log]: Attempting ingestion from folder path: '{brightleaf_path}'...")
 

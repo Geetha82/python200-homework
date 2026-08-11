@@ -9,6 +9,7 @@ from llama_index.core import VectorStoreIndex
 
 
 # STEP 1: INITIALIZATION & ENVIRONMENT SETUP
+print(f"\nStep 1: Setup\n")
 
 # Load environment configuration variables from .env
 load_dotenv()
@@ -25,7 +26,7 @@ print("[System Log]: OpenAI client successfully initialized with active API Key 
 # Path Setup: Define path to the local data directory relative to this script
 # Since you are running project_06.py inside the assignments_06 directory,
 # the folder "groundwork_docs" sits directly right next to your script.
-docs_dir = Path("./groundwork_docs")
+docs_dir = Path("lessons/06_AI_augmentation/resources/groundwork_docs")
 
 # Defensive Guard: Halt execution immediately if data directories are missing
 assert docs_dir.exists(), f"[Critical Error] Document directory not found at: {docs_dir.resolve()}. Please create the folder and populate your .txt files."
@@ -34,6 +35,7 @@ print(f"[System Log]: Workspace path check passed. Groundwork documents director
 print("=" * 70)
 
 # STEP 2: LOAD THE DOCUMENTS VIA SIMPLEDIRECTORYREADER
+print(f"\nStep 2: Load the Documents\n")
 
 print("[System Log]: Initiating document ingestion loop from data directory...")
 
@@ -61,6 +63,7 @@ print("=" * 70)
 
 
 # STEP 3: BUILD THE INDEX AND QUERY ENGINE
+print(f"\nStep 3: Build the Index and Query Engine\n")
 
 print("[System Log]: Initiating Vector Space embedding conversion...")
 
@@ -81,6 +84,7 @@ except Exception as e:
 print("=" * 70)
 
 # STEP 4: QUERY THE ASSISTANT via AGGREGATION LOOP
+print(f"\nStep 4: Query the Assistant\n")
 
 print("[System Log]: Dispatching target query execution verification array...")
 
@@ -157,6 +161,7 @@ Observations and Performance Evaluation:
 """
 
 # STEP 5: FIND A FAILURE (STRESS-TEST INQUIRY)
+print(f"\nStep 5: Find a Failure\n")
 
 print("\n=== Step 5: Find a Failure ===")
 
