@@ -23,8 +23,22 @@ if not api_key:
 client = OpenAI(api_key=api_key)
 print("[System Log]: OpenAI client successfully initialized with active API Key configuration.")
 
-# Path Setup: Define path to the local data directory relative to this script
-docs_dir = Path("lessons/06_AI_augmentation/resources/groundwork_docs")
+project_candidates = [
+    Path("lessons/06_AI_augmentation/resources/groundwork_docs"),
+    Path("../lessons/06_AI_augmentation/resources/groundwork_docs"),
+    Path("../python-200-v1/lessons/06_AI_augmentation/resources/groundwork_docs"),
+    Path("./groundwork_docs")
+]
+
+docs_dir = None
+for candidate in project_candidates:
+    if candidate.exists() and candidate.is_dir():
+        docs_dir = candidate
+        print(f"[System Log]: Valid project directory located at: '{docs_dir}'")
+        break
+
+if docs_dir is None:
+    docs_dir = Path("lessons/06_AI_augmentation/resources/groundwork_docs")
 
 # Defensive Guard: Halt execution immediately if data directories are missing
 assert docs_dir.exists(), f"[Critical Error] Document directory not found at: {docs_dir.resolve()}. Please create the folder and populate your .txt files."
@@ -138,30 +152,26 @@ print("=" * 70)
 # --- Step 4 Post-Execution Reflection Commentary ---
 """
 Observations and Performance Evaluation:
-
 1. Did the assistant sound confident and accurate?
    Yes, the assistant sounded exceptionally confident, accurate, and professional throughout all five runs. 
    Because its prompt context was heavily grounded with high-confidence semantic chunks from the local files, 
-   it stated specific facts directly (such as weekend hours being '8:00 AM to 5:00 PM' or points expiring at 
+   it stated specific facts directly (such as weekend hours being '8:00 AM to 5:00 PM' from faq.txt or points expiring at 
    '100 points' for a free drink) without using vague hedging phrases like "I think" or "based on the text."
 
 2. Did any of the answers surprise you?
-   The behavior of Query #2 ('Do you offer any dairy-free milk options?') provided a surprising and insightful 
+   The behavior of Query #2 ('Do you offer any dairy-free milk options?') provided an insightful 
    revelation. I expected the query engine to primarily pull 'menu.txt' to answer an ingredient question. Instead, 
    the vector model isolated 'seasonal_specials.txt' as the top retrieved source node with a high similarity score 
-   of ~0.779. 
-   
-   Even though the top chunk's text preview clipped right at the word 'Dairy-fre...', the engine utilized the 
+   of ~0.780. Even though the top chunk's text preview clipped right at the word 'Dairy-fre...', the engine utilized the 
    'similarity_top_k=3' context buffer to pass enough background details to the LLM, resulting in an accurate and 
-   helpful answer: 'All dairy-free options are available at no extra charge.' This proves that semantic search 
-   successfully finds answers across different files even if the information isn't positioned exactly where a 
-   human expects it to be.
+   helpful answer explicitly enumerating oat milk, almond milk, and soy milk. 
+   Additionally, Query #3 matched 'faq.txt' with a score of ~0.770 because 'faq.txt' contains consolidated business answers 
+   that map strongly onto the user's vocabulary structure. Meanwhile, Query #4 accurately targeted 'our_story.txt' with 
+   a high similarity score of ~0.904, enabling the LLM to extract the precise foundation background of Maya Torres and Sam Okafor.
 """
 
 # STEP 5: FIND A FAILURE (STRESS-TEST INQUIRY)
 print(f"\nStep 5: Find a Failure\n")
-
-print("\n=== Step 5: Find a Failure ===")
 
 # A combined, speculative query designed to stretch and break semantic routing boundaries
 failure_test_query = "Do our weekend breakfast customers earn extra loyalty points if they book a catering wedding package?"
@@ -195,44 +205,38 @@ print("=" * 70)
 # --- Step 5 Post-Execution Reflection Commentary ---
 """
 Observations and Performance Evaluation:
-
 1. What I Asked and Why I Expected it to be Hard:
-   - The Query: "Do our weekend breakfast customers earn extra loyalty points if they book a catering wedding package?"
-   - Why it is hard: This query targets nonexistent policy intersections. It requires scanning multiple completely distinct 
-     functional domains—wedding packages (wholesale_catering.txt), weekend hours (faq.txt), and loyalty structures—and 
-     forces the engine to verify if an explicit point multiplier exists for a specific customer sub-type.
+   The query targets nonexistent policy intersections. It requires scanning multiple completely distinct 
+   functional domains—wedding packages, weekend hours, and loyalty structures—and forces the engine to verify 
+   if an explicit point multiplier exists for a specific customer sub-type.
 
 2. What Went Wrong (Retrieval vs. Generation Analysis):
    - Retrieval Failure: The semantic embedding search suffered from severe keyword dilution. Because the question contained 
-     words like "catering," "wedding," and "weekend," the vector database fetched 'wholesale_catering.txt' (Score: ~0.782), 
-     'faq.txt' (Score: ~0.759), and 'seasonal_specials.txt' (Score: ~0.730). It failed to retrieve the foundational loyalty 
-     rules altogether. The engine passed high-scoring fragments into the prompt window that contained zero information 
-     regarding loyalty mechanics.
-   - Generation Failure (The Model Guessed): Even though the information was completely missing from the retrieved context, 
+     words like "catering," "wedding," and "weekend," the vector database fetched 'wholesale_catering.txt' as Node 1 (Score: ~0.785), 
+     'faq.txt' as Node 2 (Score: ~0.762), and 'seasonal_specials.txt' as Node 3 (Score: ~0.733). It failed to retrieve any 
+     dedicated loyalty program reference documents altogether.
+   - Generation Failure (The Model Guessed): Even though the actual information was completely missing from the retrieved context, 
      the model did not flag the data absence. Instead, it hallucinated a definitive negative assertion: "Weekend breakfast 
      customers do not earn extra loyalty points if they book a catering wedding package." While this claim happens to be 
      true for the business, the LLM fabricated this fact on the spot because nothing in the active context fragments 
      supported or denied it.
 
 3. Analysis of Tone and Certainty:
-   - The model's tone did not change whatsoever; it remained completely direct, confident, and declarative despite being wrong. 
-     It did not use defensive phrases like "based on the text, I am unsure" or hedge its stance. It presented a complete guess 
-     with the exact same authoritative tone used for fully grounded factual responses.
+   The model's tone did not change whatsoever; it remained completely direct, confident, and declarative despite being wrong. 
+   It did not use defensive phrases like "based on the text, I am unsure" or hedge its stance. It presented a complete guess 
+   with the exact same authoritative tone used for fully grounded factual responses.
 
 4. What this Suggests About Trusting AI-Generated Responses:
-   - This proves that a model's confidence is never a reliable indicator of factual truth. Because LLMs are trained to generate 
-     smooth, plausible-sounding linguistic patterns, they will state completely fabricated hallucinations or blind guesses 
-     with absolute authority. Without explicit constraints or validation layers, a system can seamlessly mislead users while 
-     sounding entirely certain of its claims.
+   This proves that a model's confidence is never a reliable indicator of factual truth. Because LLMs are trained to generate 
+   smooth, plausible-sounding linguistic patterns, they will state completely fabricated hallucinations or blind guesses 
+   with absolute authority. Without explicit constraints or validation layers, a system can seamlessly mislead users while 
+   sounding entirely certain of its claims.
 
 5. Architectural Changes to Improve the System:
    - Strict Context Boundary Guarding: Modify the base system prompt instructions to state: "If the provided context fragments 
      do not explicitly state or confirm a policy, you must respond with: 'I am sorry, but that information is not available.'"
-   - Similarity Score Thresholding: Implement a strict mathematical cut-off filter. If a query does not produce context nodes 
-     above a certain similarity threshold (e.g., >0.82), the system should reject the generation cycle outright.
-   - Query Deconstruction Agents: Place an LLM routing agent at the front gate to break complex, multi-topic queries down 
-     into standalone sub-questions (e.g., checking catering terms and loyalty points separately) to pull targeted chunks 
-     from each individual database slice.
+   - Similarity Score Thresholding: If a query does not produce context nodes above a certain similarity threshold (e.g., >0.82), 
+     the system should reject the generation cycle outright.
 """
 
 # STEP 6: FINAL ARCHITECTURAL REFLECTION

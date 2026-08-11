@@ -1,8 +1,9 @@
 
-import os
+
 import string
 from openai import OpenAI
 from dotenv import load_dotenv
+import os
 
 # Explicitly import structural modules supported by core 0.14.10
 from llama_index.core import SimpleDirectoryReader, VectorStoreIndex, Settings
@@ -71,62 +72,69 @@ with technical competence, they drop their analytical guard and uncritically tru
 print("\n=== Concepts Question 3 ===")
 print("RAG Pipeline Sequence Arranged Chronologically in Comments.")
 print("=" * 60)
+# Concepts Q3
+print("\n=== Concepts Question 3 ===")
+print("RAG Pipeline Sequence Arranged Chronologically in Comments.")
+print("=" * 60)
 
 """
 Concepts Q3 Reflection Commentary:
 
-Official Assignment Step List Arranged in Chronological Order:
-1. Extract text from source documents
-2. Split text into chunks
-3. Convert text chunks into embeddings
-4. Receive the user's query
-5. Embed the user's query
-6. Retrieve the most relevant chunks
-7. Inject retrieved chunks into the prompt
-8. Generate a response from the LLM
+Official Assignment Step List Arranged Chronologically with One-Sentence Descriptions:
 
---- Technical Context Breakdown ---
-* Pre-Processing Phase (Steps 1-3): Focuses on data ingestion, structural window 
-  segmentation, and populating your vector database store on disk or in memory.
-* Execution Loop Phase (Steps 4-8): Triggers at runtime when a user asks a question, 
-  conducting semantic distance calculations and binding the context to eliminate hallucinations.
+1. Extract text from source documents
+   The system reads raw binary formats like PDFs, HTML, or TXT files and parses them into clean, unformatted plain text strings.
+
+2. Split text into chunks
+   The massive raw document text string is sliced into smaller, uniform sections with an overlap window to isolate semantic ideas.
+
+3. Convert text chunks into embeddings
+   Each separate text chunk is transformed into a high-dimensional numeric vector using an embedding model and saved into a database.
+
+4. Receive the user's query
+   The end-user inputs a natural language question or informational request directly into the application chat interface.
+
+5. Embed the user's query
+   The system takes the user's natural language question string and converts it into a vector embedding using the same model.
+
+6. Retrieve the most relevant chunks
+   The database performs a mathematical similarity check to extract the text chunks whose vector coordinates match closest to the query.
+
+7. Inject retrieved chunks into the prompt
+   The raw text contents of the highest-ranking matching chunks are pasted directly into a structured system prompt template.
+
+8. Generate a response from the LLM
+   The model reads the system directives, the injected reference facts, and the question to output an accurate final answer.
 """
 
 
-# --- Keyword-based RAG ---
+# # --- Keyword-based RAG ---
 
 def simple_keyword_retrieval(query, documents, verbose=True):
     """Keyword retrieval using token overlap scoring."""
     stopwords = {
-        "a", "an", "the", "and", "or", "in", "on", "of", "for", "to", "is",
-        "are", "was", "were", "by", "with", "at", "from", "that", "this",
-        "as", "be", "it", "its", "their", "they", "we", "you", "our"
+        "a", "an", "the", "and", "or", "in", "on", "of", "for", "to", "is", "are", 
+        "was", "were", "by", "with", "at", "from", "that", "this", "as", "be", "it", 
+        "its", "their", "they", "we", "you", "our"
     }
     translator = str.maketrans("", "", string.punctuation)
-
-    query_words = {
-        w.translate(translator)
-        for w in query.lower().split()
-        if w not in stopwords
-    }
+    query_words = { w.translate(translator) for w in query.lower().split() if w not in stopwords }
+    
     if verbose:
         print(f"\nQuery tokens (filtered): {sorted(query_words)}")
-
+        
     scores = []
     for name, content in documents.items():
-        content_words = {
-            w.translate(translator)
-            for w in content.lower().split()
-            if w not in stopwords
-        }
+        content_words = { w.translate(translator) for w in content.lower().split() if w not in stopwords }
         overlap = query_words & content_words
         score = len(overlap)
         scores.append((score, name, content))
         if verbose:
             print(f"[{name}] overlap={score} -> {sorted(overlap)}")
-
+            
     scores.sort(reverse=True)
     best = next(((name, content) for score, name, content in scores if score > 0), None)
+    
     if best:
         if verbose:
             print(f"\nSelected best match: {best[0]}")
@@ -136,10 +144,8 @@ def simple_keyword_retrieval(query, documents, verbose=True):
             print("\nNo overlapping keywords found.")
         return [("None found", "No relevant content.")]
 
-    
 # Keyword Q1
 print("\n=== Keyword Question 1 ===")
-
 query_k1 = "What are your hours on weekends?"
 documents_k1 = {
     "menu.txt": "We serve espresso, lattes, cappuccinos, and cold brew. Pastries include croissants and muffins baked fresh daily. Oat milk and almond milk are available.",
@@ -148,86 +154,56 @@ documents_k1 = {
     "loyalty.txt": "Join our loyalty program to earn one point per dollar spent. Redeem 100 points for a free drink of your choice.",
 }
 
-# Execute simple_keyword_retrieval with tracing enabled
 retrieval_results = simple_keyword_retrieval(query=query_k1, documents=documents_k1, verbose=True)
-
-# Extract and print the name of the selected file matching the top slot
 selected_doc_name = retrieval_results[0][0]
 print(f"\n[Result Label] Selected Document Name: {selected_doc_name}")
 print("=" * 60)
 
-# --- Keyword Q1 Reflection Commentary ---
-# Which document was selected and why:
-# The function selected 'loyalty.txt'. 
-# This happened because the word 'your' was not filtered out by the hardcoded stopwords set, 
-# meaning the system processed {'hours', 'weekends', 'what', 'your'} as key search terms.
+# ANSWER Q1: 
+# Selected Document: loyalty.txt
+# Why: The word 'your' was not filtered out by the stopwords list, making it an active search token. 
 # This created a three-way tie where 'hours.txt' (matching 'weekends'), 'hiring.txt' (matching 'your'), 
-# and 'loyalty.txt' (matching 'your') each scored a token overlap score of exactly 1. 
-# Because of this tie, the sorting algorithm fell back to internal placement ordering, selecting 'loyalty.txt'.
+# and 'loyalty.txt' (matching 'your') each scored an overlap of 1. Because of this tie, the sorting 
+# algorithm fell back to internal alphabetical file placement order and returned 'loyalty.txt'.
+
 
 # Keyword Q2
 print("\n=== Keyword Question 2 ===")
-
 query_k2 = "Do you have anything without caffeine?"
 
-# Execute simple_keyword_retrieval on the second query using the documents from Q1
 retrieval_results_k2 = simple_keyword_retrieval(query=query_k2, documents=documents_k1, verbose=True)
-
-# Extract and print the name of the selected file
 selected_doc_name_k2 = retrieval_results_k2[0][0]
 print(f"\n[Result Label] Selected Document Name: {selected_doc_name_k2}")
 print("=" * 60)
 
-# --- Keyword Q2 Reflection Commentary ---
-# Which document was selected:
-# The function selected "None found" (returning a fallback tuple of "None found" and "No relevant content.").
-#
-# Whether keyword RAG got this right — and why or why not:
-# No, keyword RAG did not get this right. Human context tells us that 'menu.txt' is the best match 
-# because it offers caffeine-free alternatives like pastries, croissants, muffins, oat milk, and almond milk. 
-# Keyword RAG failed here because it relies entirely on literal word matches. Because words like 'anything' 
-# or 'caffeine' do not appear verbatim inside the menu text, the overlap score dropped to 0 across the board.
-#
-# What kind of retrieval would do better here:
-# Dense semantic retrieval using Vector Embeddings would do much better here. Semantic retrieval measures 
-# the mathematical distance between concepts rather than checking spelling matches. A vector-based system 
-# would recognize that food items and non-dairy milks are semantically related to things "without caffeine," 
-# allowing it to retrieve 'menu.txt' successfully.
+# ANSWER Q2:
+# Selected Document: None found
+# Right or Wrong: Wrong. Humans know 'menu.txt' is best because pastries and milks are caffeine-free.
+# Why it failed: Keyword search checks for literal string overlaps. Because words like 'caffeine' 
+# or 'anything' do not appear verbatim inside 'menu.txt', its overlap score dropped to 0.
+# Better System: Dense semantic retrieval using Vector Embeddings would perform better here by 
+# mapping contextual relationships (food/milk are related to caffeine-free choices) instead of character matching.
+
 
 # Keyword Q3
 print("\n=== Keyword Question 3 ===")
-
-# --- Keyword Q3 Prediction (Written Before Execution) ---
-# Query: "How do I sign up for rewards?"
-#
-# Prediction: I predict that 'loyalty.txt' will be selected by the function.
-#
-# Reasoning: After stripping common stopwords from the query, the unique search tokens 
-# evaluated by the function will be {'how', 'do', 'i', 'sign', 'up', 'rewards'}. 
-# (Note: 'how', 'do', 'i', 'sign', and 'up' are treated as keywords because they are missing 
-# from the function's hardcoded stopwords list). 
-# Looking at the documents, 'loyalty.txt' explicitly mentions "Join our loyalty program to earn...", 
-# which conceptually and structurally shares strong word-stem associations with "rewards" and 
-# "signing up," ensuring it will yield the dominant overlap score.
-
 query_k3 = "How do I sign up for rewards?"
 
-# Run the code to check the prediction
-retrieval_results_k3 = simple_keyword_retrieval(query=query_k3, documents=documents_k1, verbose=True)
+# PREDICTION Q3:
+# Predicted Document: loyalty.txt
+# Reasoning: The query keywords like 'rewards' and 'sign up' match the concepts inside the loyalty file.
 
-# Extract and print the name of the selected file
+retrieval_results_k3 = simple_keyword_retrieval(query=query_k3, documents=documents_k1, verbose=True)
 selected_doc_name_k3 = retrieval_results_k3[0][0]
 print(f"\n[Result Label] Selected Document Name: {selected_doc_name_k3}")
 print("=" * 60)
 
-# - Keyword Q3 Post-Execution Reflection Commentary ---
-# Was your prediction correct? Explain what happened:
-# No, my prediction was incorrect. The function returned "None found". 
-# The result surprised me because a human can easily tell that 'loyalty.txt' is the right document 
-# for a rewards query. However, the document actually uses the terms "loyalty program" and "points," 
-# completely missing the literal string "rewards". Because keyword retrieval requires precise, 
-# exact token overlaps, and because conversational terms like 'how', 'do', 'i', 'sign', 'up' 
-# are absent from the document body, the overlap score dropped to 0 across the entire index.
+# ANSWER Q3:
+# Selected Document: None found
+# Prediction Correct?: No, the prediction was incorrect because the algorithm returned 'None found'.
+# Why it happened: While humans associate 'rewards' with a loyalty program, 'loyalty.txt' uses the exact 
+# terms 'loyalty program' and 'points', leaving 0 literal word overlaps with the user's query tokens.
+
 
 # # --- Semantic RAG Concepts ---
 
@@ -284,7 +260,7 @@ Settings.embed_model = OpenAIEmbedding(model="text-embedding-3-small")
 
 # Path Setup: Point SimpleDirectoryReader to the precise relative folder path discovered in the repo layout
 # Path Setup: Point SimpleDirectoryReader to the official lesson path relative to this script
-brightleaf_path = "lessons/06_AI_augmentation/resources/brightleaf_pdfs"
+brightleaf_path = "assignments_06/lessons/06_AI_augmentation/resources/brightleaf_pdfs"
 
 print(f"[System Log]: Attempting ingestion from folder path: '{brightleaf_path}'...")
 
@@ -345,7 +321,6 @@ except Exception as e:
 
 print("=" * 60)
 
-# --- LlamaIndex Q1 Post-Execution Reflection Commentary ---
 # --- LlamaIndex Q1 Post-Execution Reflection Commentary ---
 """
 Observations and Performance Evaluation:
