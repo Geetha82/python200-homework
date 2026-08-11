@@ -24,8 +24,6 @@ client = OpenAI(api_key=api_key)
 print("[System Log]: OpenAI client successfully initialized with active API Key configuration.")
 
 # Path Setup: Define path to the local data directory relative to this script
-# Since you are running project_06.py inside the assignments_06 directory,
-# the folder "groundwork_docs" sits directly right next to your script.
 docs_dir = Path("lessons/06_AI_augmentation/resources/groundwork_docs")
 
 # Defensive Guard: Halt execution immediately if data directories are missing
