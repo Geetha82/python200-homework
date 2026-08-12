@@ -21,7 +21,7 @@ if not os.getenv("OPENAI_API_KEY"):
 print("[System Log]: OpenAI client successfully initialized with active API Key configuration.")
 
 # Direct path definition to comply strictly with instruction parameters
-docs_dir = Path("assignments_06/lessons/06_AI_augmentation/resources/groundwork_docs")
+docs_dir = Path("groundwork_docs")
 
 # Step 1 Mandate: Enforce path presence with a defensive assertion stop check
 assert docs_dir.exists(), f"[Critical Error] Document directory not found: {docs_dir}"
