@@ -5,6 +5,7 @@ import re
 import string
 from typing import List, Dict, Any, Tuple
 
+from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.core import SimpleDirectoryReader, VectorStoreIndex, Settings
 from llama_index.core.evaluation import FaithfulnessEvaluator, RelevancyEvaluator
 
