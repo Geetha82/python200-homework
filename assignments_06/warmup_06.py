@@ -181,7 +181,7 @@ q2_query = "Do you have anything without caffeine?"
 # Uses the exact same document dictionary corpus from Keyword Q1
 
 # Execute keyword search using our shared documents corpus dictionary
-q2_results = simple_keyword_retrieval(q2_query, q1_documents, verbose=True)
+q2_results = simple_keyword_retrieval(q2_query, shared_documents, verbose=True)
 
 selected_q2_doc = q2_results[0][0]
 print(f"\nSelected Document Name: {selected_q2_doc}")
@@ -218,7 +218,7 @@ print("\n# Keyword Question 3: Running a Synonym Gap Search Query")
 query_3 = "How do I sign up for rewards?"
 # Execute keyword search using our shared documents corpus 
 dictionaryresults_3 = simple_keyword_retrieval(query_3, shared_documents, verbose=True)
-print(f"Final Selected Document: {results_3[0][0]}")
+print(f"Final Selected Document: {dictionaryresults_3[0][0]}")
 
 # Keyword Question 3 Explanation Comment Block:
 # ------------------------------------------------------------------------------
