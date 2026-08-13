@@ -132,25 +132,20 @@ except Exception as e:
 
 print("=" * 70)
 
-# --- Step 4 Post-Execution Reflection Commentary ---
+#Step 4 Reflection Comment Block:
+# ------------------------------------------------------------------------------
+# Reflection on Step 4 responses:
 
-# Observations and Performance Evaluation:
-# 1. Did the assistant sound confident and accurate?
-#    Yes, the assistant sounded exceptionally confident, accurate, and professional throughout all five runs. 
-#    Because its prompt context was heavily grounded with high-confidence semantic chunks from the local files, 
-#    it stated specific facts directly (such as weekend hours being '8:00 AM to 5:00 PM' from faq.txt or points expiring at 
-#    '100 points' for a free drink) without using vague hedging phrases like "I think" or "based on the text."
+# 1. Did the assistant sound confident and accurate?Yes, the assistant sounded highly confident and completely accurate. 
+# Everyanswer perfectly reflected the information inside the retrieved chunks
+# (suchas extracting the exact 2018 founding year from our_story.txt and
+# correctweekend hours from faq.txt) without adding any vague guesswork or defensive filler.
 
-# 2. Did any of the answers surprise you?
-#    The behavior of Query #2 ('Do you offer any dairy-free milk options?') provided an insightful 
-#    revelation. I expected the query engine to primarily pull 'menu.txt' to answer an ingredient question. Instead, 
-#    the vector model isolated 'seasonal_specials.txt' as the top retrieved source node with a high similarity score 
-#    of ~0.780. Even though the top chunk's text preview clipped right at the word 'Dairy-fre...', the engine utilized the 
-#    'similarity_top_k=3' context buffer to pass enough background details to the LLM, resulting in an accurate and 
-#    helpful answer explicitly enumerating oat milk, almond milk, and soy milk. 
-#    Additionally, Query #3 matched 'faq.txt' with a score of ~0.770 because 'faq.txt' contains consolidated business answers 
-#    that map strongly onto the user's vocabulary structure. Meanwhile, Query #4 accurately targeted 'our_story.txt' with 
-#    a high similarity score of ~0.904, enabling the LLM to extract the precise foundation background of Maya Torres and Sam Okafor.
+# 2. Did any of the answers surprise you?I was surprised by how accurately the semantic engine handled the dairy-free query.
+# Even though the question asked broadly about "dairy-free milk options," the indexretrieved seasonal_specials.txt 
+# with a high score of 0.7791, and the model perfectlypulled out 
+# specific ingredients (oat, almond, and soy milk) and noted they are providedat no extra charge. 
+# This showcases how vector indexing successfully matches conceptseven when text spans multiple contexts.
 
 
 # STEP 5: FIND A FAILURE (STRESS-TEST INQUIRY)
@@ -185,41 +180,36 @@ except Exception as e:
 
 print("=" * 70)
 
-# --- Step 5 Post-Execution Reflection Commentary ---
+# Step 5 Evaluation & Diagnostics Comment Block:
+# ------------------------------------------------------------------------------
+# Explanation of Failure Mode:
 
-# Observations and Performance Evaluation:
-# 1. What I Asked and Why I Expected it to be Hard:
-#    The query targets nonexistent policy intersections. It requires scanning multiple completely distinct 
-#    functional domains—wedding packages, weekend hours, and loyalty structures—and forces the engine to verify 
-#    if an explicit point multiplier exists for a specific customer sub-type.
+# 1. What you asked and why you expected it to be hard:
+# I asked if weekend breakfast customers earn extra loyalty points when bookinga catering wedding package. 
+# This query is hard because it links keywords fromthree separate operational 
+# aspects ("weekend breakfast", "loyalty points","catering wedding package") that do not intersect in any single document rule.
 
-# 2. What Went Wrong (Retrieval vs. Generation Analysis):
-#    - Retrieval Failure: The semantic embedding search suffered from severe keyword dilution. Because the question contained 
-#      words like "catering," "wedding," and "weekend," the vector database fetched 'wholesale_catering.txt' as Node 1 (Score: ~0.785), 
-#      'faq.txt' as Node 2 (Score: ~0.762), and 'seasonal_specials.txt' as Node 3 (Score: ~0.733). It failed to retrieve any 
-#      dedicated loyalty program reference documents altogether.
-#    - Generation Failure (The Model Guessed): Even though the actual information was completely missing from the retrieved context, 
-#      the model did not flag the data absence. Instead, it hallucinated a definitive negative assertion: "Weekend breakfast 
-#      customers do not earn extra loyalty points if they book a catering wedding package." While this claim happens to be 
-#      true for the business, the LLM fabricated this fact on the spot because nothing in the active context fragments 
-#      supported or denied it.
+# 2. What went wrong — wrong retrieval, missing information, the model guessed anyway?This represents a 
+# clear "Retrieval Gap" combined with an accidental correct guess by the LLM.The underlying documents contain 
+# missing information—there is no text matching wedding points.Vector search retrieved 
+# 'wholesale_catering.txt' (0.7827), 'faq.txt' (0.7597), and'seasonal_specials.txt' (0.7307) simply because those files 
+# contain the individual fragments"catering," "weekend," and "loyalty." Because the text had no rule granting extra points,
+# the model correctly deduced the answer was a negative, but it did so without actual proof.
 
-# 3. Analysis of Tone and Certainty:
-#    The model's tone did not change whatsoever; it remained completely direct, confident, and declarative despite being wrong. 
-#    It did not use defensive phrases like "based on the text, I am unsure" or hedge its stance. It presented a complete guess 
-#    with the exact same authoritative tone used for fully grounded factual responses.
+# 3. Tone observation and uncertainty tracking when retrieval failed:
+# The model's tone did not change at all. It remained fully confident, authoritative,and completely certain, 
+# stating flatly: "Weekend breakfast customers do not earn extraloyalty points if they book a catering wedding package.
+# " It did not mention that it lackeddirect supporting proof or that the context text was missing explicit wedding terms.
 
-# 4. What this Suggests About Trusting AI-Generated Responses:
-#    This proves that a model's confidence is never a reliable indicator of factual truth. Because LLMs are trained to generate 
-#    smooth, plausible-sounding linguistic patterns, they will state completely fabricated hallucinations or blind guesses 
-#    with absolute authority. Without explicit constraints or validation layers, a system can seamlessly mislead users while 
-#    sounding entirely certain of its claims.
+# 4. What this suggests about trusting AI-generated responses:
+# This suggests that an AI response's professional, assertive tone is an 
+# unreliable metric for truth.An engine can deliver a confident, logical answer while processing 
+# irrelevant source nodesflawed by an active retrieval gap.5. What you would change about the system to
+#  improve it:I would implement a programmatic similarity score guardrail or require an explicitsystem instruction 
+# forcing the LLM to state "I cannot find information linking wedding packagesto loyalty structures" whenever 
+# the retrieved fragments fail to address all compound clausesof a search parameter.
 
-# 5. Architectural Changes to Improve the System:
-#    - Strict Context Boundary Guarding: Modify the base system prompt instructions to state: "If the provided context fragments 
-#      do not explicitly state or confirm a policy, you must respond with: 'I am sorry, but that information is not available.'"
-#    - Similarity Score Thresholding: If a query does not produce context nodes above a certain similarity threshold (e.g., >0.82), 
-#      the system should reject the generation cycle outright.
+# ------------------------------------------------------------------------------
 
 
 # --- Step 6 Reflection Commentary ---
