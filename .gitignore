@@ -1,7 +1,8 @@
-.venv/
-__pycache__/
+# Ignore local VS Code settings
+.vscode/
 
-# Week 4 specific rules
-*.joblib
-*.pkl
-*.csv
+# Ignore your Python virtual environment folder
+.venv/
+venv/
+
+.env
