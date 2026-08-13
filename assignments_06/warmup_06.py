@@ -458,8 +458,12 @@ for node_idx, source_node in enumerate(response_obj_3.source_nodes, start=1):
 print("\n===== LlamaIndex Question 4===== \n")
 
 from llama_index.core.evaluation import FaithfulnessEvaluator, RelevancyEvaluator
+from llama_index.llms.openai import OpenAI
 
-faithfulness_checker = FaithfulnessEvaluator(llm=Settings.llm)
+# Explicitly instantiating the judge model as gpt-4o-mini
+judge_llm = OpenAI(model="gpt-4o-mini")
+
+faithfulness_checker = FaithfulnessEvaluator(llm=judge_llm)
 relevancy_checker = RelevancyEvaluator(llm=Settings.llm)
 
 # 1. Evaluate high-quality response
