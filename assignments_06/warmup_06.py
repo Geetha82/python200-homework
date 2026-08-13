@@ -464,7 +464,7 @@ from llama_index.llms.openai import OpenAI
 judge_llm = OpenAI(model="gpt-4o-mini")
 
 faithfulness_checker = FaithfulnessEvaluator(llm=judge_llm)
-relevancy_checker = RelevancyEvaluator(llm=Settings.llm)
+relevancy_checker = RelevancyEvaluator(llm=judge_llm)
 
 # 1. Evaluate high-quality response
 print("\n[Run 1] Evaluating High-Quality Response (Employee Benefits Query)...")
