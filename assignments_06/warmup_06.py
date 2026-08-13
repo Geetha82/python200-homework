@@ -15,25 +15,9 @@ if load_dotenv():
 else:
     print("Warning: could not load API key. Check your .env file.")
 
-# ==============================================================================
 # --- RAG Concepts ---
-# ==============================================================================
 
-# Concepts Q1: Scenario Analysis for LLM Augmentation Strategies
-# ------------------------------------------------------------------------------
-# Scenario A: Legal team internal policy library (hundreds of PDFs updated quarterly)
-# Best Approach: Retrieval-Augmented Generation (RAG)
-# Reasoning: The library consists of hundreds of frequently updated documents, which is too vast for simple context injection and too dynamic for static fine-tuning. RAG connects a dynamic data store directly to a frozen LLM, providing scalable updates and crucial audit trails.
-#
-# Scenario B: Startup product copy in a specific brand voice (3,000 examples)
-# Best Approach: Fine-Tuning
-# Reasoning: The objective here is to train the model on nuanced behavior, style, and tone rather than factual information retrieval. Given a large, consistent dataset of 3,000 examples, fine-tuning modifies the model's internal weights to consistently match this dry, minimalist brand identity.
-#
-# Scenario C: Data analyst asking questions about a single two-page report
-# Best Approach: Prompt Engineering (Context Injection)
-# Reasoning: A single two-page document has a minimal token count that easily fits directly into the native context window of modern LLMs. Building an external vector database pipeline or retraining weights is unnecessary overhead for a quick, one-off analytical task.
-# ------------------------------------------------------------------------------
-
+# Concepts Question 1
 print("\n# Concepts Q1: Evaluation of Augmentation Architectures")
 strategies_summary = """
 1. Context Injection:
@@ -53,6 +37,33 @@ print("  Scenario A -> Best Approach: RAG (Handles hundreds of dynamically chang
 print("  Scenario B -> Best Approach: Fine-Tuning (Alters behavioral stylistic weight parameters using 3,000 target examples).")
 print("  Scenario C -> Best Approach: Prompt Engineering (Direct context injection for a tiny two-page static report).")
 
+# Concepts Q1: Evaluation of Augmentation Architectures
+# 1. Context Injection:
+# - Pros: Zero training cost, highly accurate for provided text, instant updates.
+# - Cons: Bound by context window limits; linear cost growth with input token volume.
+
+# 2. Fine-Tuning:
+# - Pros: Optimizes formatting, style, tone, and deep domain-specific vocabulary rules.
+# - Cons: Computationally expensive; slow iteration cycle; prone to factual hallucinations.
+
+# 3. Retrieval-Augmented Generation (RAG):
+# - Pros: Scalable to massive external enterprise corpuses; verifiable with audit trails/citations.
+# - Cons: Relies heavily on retrieval accuracy; higher orchestration complexity.
+
+# Scenario Recommendations Log:
+# Scenario A -> Best Approach: RAG (Handles hundreds of dynamically changing quarterly PDFs with strict traceability).
+# Scenario B -> Best Approach: Fine-Tuning (Alters behavioral stylistic weight parameters using 3,000 target examples).
+# Scenario C -> Best Approach: Prompt Engineering (Direct context inj
+
+# Concepts Question 2
+print("\n# Concepts Q2: Analysis of Confident Hallucinations")
+hallucination_analysis = """
+- Harm Threshold: "I am not sure" preserves human vigilance; confident errors systematically bypass human skepticism.
+- Clinical/Real-World Example: A medical diagnostic bot misinterpreting a critical symptom as benign, delaying life-saving medical care.
+- Tone vs. Trust: Fluent, highly authoritative phrasing mirrors genuine expertise, exploiting linguistic biases to mask baseline statistical uncertainty.
+"""
+print(hallucination_analysis.strip())
+
 # Concepts Q2: The Harm of Confident Hallucinations and the Role of Tone
 # ------------------------------------------------------------------------------
 # 1. Why a confidently wrong answer is more harmful than "I am not sure":
@@ -65,48 +76,7 @@ print("  Scenario C -> Best Approach: Prompt Engineering (Direct context injecti
 #    The linguistic structure and tone of an output dictate human trust much more than the actual underlying data validity. When an LLM uses authoritative phrases, structured assertions, and definitive syntax, it maps directly onto human cognitive biases that equate professional fluency with expertise. This mismatch makes a hallucinated answer uniquely dangerous, as it perfectly mimics the expression of absolute truth.
 # ------------------------------------------------------------------------------
 
-print("\n# Concepts Q2: Analysis of Confident Hallucinations")
-hallucination_analysis = """
-- Harm Threshold: "I am not sure" preserves human vigilance; confident errors systematically bypass human skepticism.
-- Clinical/Real-World Example: A medical diagnostic bot misinterpreting a critical symptom as benign, delaying life-saving medical care.
-- Tone vs. Trust: Fluent, highly authoritative phrasing mirrors genuine expertise, exploiting linguistic biases to mask baseline statistical uncertainty.
-"""
-print(hallucination_analysis.strip())
-
-
-# Concepts Q3: RAG Pipeline Step Ordering
-# ------------------------------------------------------------------------------
-# Original out-of-order list:
-# steps = [
-#     "Generate a response from the LLM",
-#     "Extract text from source documents",
-#     "Receive the user's query",
-#     "Retrieve the most relevant chunks",
-#     "Convert text chunks into embeddings",
-#     "Inject retrieved chunks into the prompt",
-#     "Split text into chunks",
-#     "Embed the user's query"
-# ]
-#
-# Correct Ordered Sequence:
-# 1. Extract text from source documents
-#    - Raw file formats like PDFs or HTML are parsed to extract clean raw text data.
-# 2. Split text into chunks
-#    - Large documents are broken down into smaller, bounded text passages to respect LLM context windows and isolate specific concepts.
-# 3. Convert text chunks into embeddings
-#    - Text segments are converted into multi-dimensional dense numerical vectors using an embedding model to capture semantic meaning.
-# 4. Receive the user's query
-#    - The pipeline captures the incoming natural language question or prompt submitted by the user.
-# 5. Embed the user's query
-#    - The user's query is converted into a vector embedding using the identical embedding model to ensure geometric alignment.
-# 6. Retrieve the most relevant chunks
-#    - The system calculates mathematical similarity (e.g., cosine similarity) between the query vector and chunk vectors to fetch top-k matches.
-# 7. Inject retrieved chunks into the prompt
-#    - The retrieved high-scoring text passages are inserted into a prompt template alongside the user's question as background context.
-# 8. Generate a response from the LLM
-#    - The augmented context prompt is sent to the LLM to synthesize a grounded, accurate answer without relying on stale internal data.
-# ------------------------------------------------------------------------------
-
+# Concepts Question 3
 print("\n# Concepts Q3: Ordered RAG Pipeline Lifecycle")
 rag_steps_ordered = """
 1. Extract text from source documents
@@ -119,6 +89,30 @@ rag_steps_ordered = """
 8. Generate a response from the LLM
 """
 print(rag_steps_ordered.strip())
+
+# Concepts Q3: The steps below make up a complete RAG pipeline, but they are out of order.
+# Original out-of-order list from the prompt:
+# steps = [
+#     "Generate a response from the LLM",
+#     "Extract text from source documents",
+#     "Receive the user's query",
+#     "Retrieve the most relevant chunks",
+#     "Convert text chunks into embeddings",
+#     "Inject retrieved chunks into the prompt",
+#     "Split text into chunks",
+#     "Embed the user's query",
+# ]
+
+# Reordered steps with a one-sentence description for each:
+# 1. Extract text from source documents - This step reads the raw text contents out of your source files.
+# 2. Split text into chunks - This breaks long continuous text down into smaller, manageable portions.
+# 3. Convert text chunks into embeddings - This turns each text piece into a list of numbers representing its meaning.
+# 4. Receive the user's query - This collects the natural language question or prompt typed by the user.
+# 5. Embed the user's query - This converts the user's question into a list of numbers using the same embedding model.
+# 6. Retrieve the most relevant chunks - This compares the query numbers to the text numbers to find the closest matches.
+# 7. Inject retrieved chunks into the prompt - This pastes the best matching text blocks into the final prompt instructions.
+# 8. Generate a response from the LLM - This lets the model read the complete context and write out the final factual answer.
+
 
 
 # --- Keyword-based RAG ---
@@ -155,66 +149,30 @@ def simple_keyword_retrieval(query: str, documents: Dict[str, str], verbose: boo
         if verbose:
             print("\nNo overlapping keywords found.")
         return [("None found", "No relevant content.")]
-
-# Keyword Q1
-print("\n# Keyword Q1: Document Selection Evaluation")
-
-q1_query = "What are your hours on weekends?"
-q1_documents = {
+shared_documents = {
     "menu.txt": "We serve espresso, lattes, cappuccinos, and cold brew. Pastries include croissants and muffins baked fresh daily. Oat milk and almond milk are available.",
     "hours.txt": "We are open Monday through Friday from 7am to 7pm. On weekends we open at 8am and close at 5pm. We are closed on Thanksgiving and Christmas Day.",
     "hiring.txt": "We are currently hiring baristas and shift supervisors. Send your resume to jobs@groundworkcoffee.com.",
     "loyalty.txt": "Join our loyalty program to earn one point per dollar spent. Redeem 100 points for a free drink of your choice.",
 }
 
-# Execute keyword search with verbose trace diagnostics activated
-retrieval_results = simple_keyword_retrieval(q1_query, q1_documents, verbose=True)
 
-# Isolate and print only the designated file key name
-selected_doc_name = retrieval_results[0][0]
-print(f"\nSelected Document Name: {selected_doc_name}")
+# Keyword Question 1
+# Selected Document: hours.txt
+# Explanation: The keywords extracted from the query are 'hours' and 'weekends'. The document 'hours.txt' contains an exact match for both tokens, yielding the highest overlap score of 2, which makes it the selected document.
+
+print("\n=== Running: Keyword RAG Q1 ===")
+query_1 = "What are your hours on weekends?"
+results_1 = simple_keyword_retrieval(query_1, shared_documents, verbose=True)
+print(f"Final Selected Document: {results_1[0][0]}")
 
 
-# Keyword Q1 Auxiliary Utilities: Character-Based Sliding Window Chunking Implementation
-def chunk_text_by_chars(text: str, chunk_size: int, chunk_overlap: int) -> List[str]:
-    """
-    Splits an input text document into manageable slices using a character-based window.
-    """
-    if chunk_size <= 0:
-        raise ValueError("chunk_size must be greater than 0.")
-    if chunk_overlap >= chunk_size:
-        raise ValueError("chunk_overlap must be strictly less than chunk_size.")
-        
-    chunks = []
-    start = 0
-    effective_step = chunk_size - chunk_overlap
-    
-    while start < len(text):
-        end = start + chunk_size
-        chunk = text[start:end]
-        chunks.append(chunk)
-        start += effective_step
-        
-        # Break constraint guarding against infinite termination issues
-        if start >= len(text) or effective_step <= 0:
-            break
-            
-    return chunks
-
-print("\n# Keyword Q1 Template Check: Testing Text Chunking Utility")
-sample_doc = "Python LLM workflows are powerful. Retrieval-Augmented Generation adds private context windows."
-generated_chunks = chunk_text_by_chars(sample_doc, chunk_size=35, chunk_overlap=10)
-for idx, text_slice in enumerate(generated_chunks):
-    print(f"  Chunk {idx + 1}: '{text_slice}'")
-
-# Keyword Q1 Explanation Comment Block:
-# ------------------------------------------------------------------------------
-# When matched against the dataset corpus, "hours.txt" is selected because it is 
-# the only document with a positive intersection score (overlap=1), catching the 
-# token 'weekends'. All other text documents ("menu.txt", "hiring.txt", 
-# "loyalty.txt") yield an intersection score of exactly 0 since they share 
-# no non-stopword tokens with the filtered query array.
-# ------------------------------------------------------------------------------
+# Keyword Question 1
+# Selected Document: hours.txt
+# Explanation:
+#  Based on the terminal output, the filtered query tokens are ['hours', 'weekends', 'what']. 
+# The document 'hours.txt' was selected because it is the only document that features a matching keyword token ('weekends'), 
+# giving it a top overlap score of 1 while all other files registered 0.
 
 # Keyword Question 2
 print("\n# Keyword Question 2: Running a No-Overlap Search Vector Query")
@@ -254,59 +212,27 @@ print(f"\nSelected Document Name: {selected_q2_doc}")
 #    exact word "caffeine" is entirely missing from the document's body text.
 # ------------------------------------------------------------------------------
 
-# Keyword Question 3: Prediction and Pre-Execution Analysis
-# ------------------------------------------------------------------------------
-# Prediction: 
-# "loyalty.txt" will be selected.
-#
-# Reasoning:
-# When the query "How do I sign up for rewards?" is evaluated, common structural 
-# stopwords ("how", "do", "i", "for") are eliminated. This leaves behind two 
-# clean search tokens: ['rewards', 'sign'].
-#
-# Let's inspect our documents for these filtered tokens:
-# - menu.txt: Contains no references to signing up or rewards programs. (Overlap = 0)
-# - hours.txt: Contains store operational details. (Overlap = 0)
-# - hiring.txt: Contains job opening keywords ("hiring", "baristas", "resume"). (Overlap = 0)
-# - loyalty.txt: Contains text outlining the reward program mechanics ("loyalty program", 
-#   "earn one point per dollar spent", "Redeem 100 points"). 
-#
-# While "loyalty.txt" describes a customer incentives framework, notice that the 
-# exact string token "rewards" does not literally appear in its text, nor does 
-# the phrase "sign up". Therefore, despite being the most conceptually relevant 
-# file, the keyword algorithm will score an absolute intersection value of 0 across 
-# ALL documents. As a result, the function will trigger its fallback condition 
-# and return "None found".
-# ------------------------------------------------------------------------------
 
-print("\n# Keyword Question 3: Document Match Prediction Validation Loop")
+# Keyword Question 3
+print("\n# Keyword Question 3: Running a Synonym Gap Search Query")
+query_3 = "How do I sign up for rewards?"
+# Execute keyword search using our shared documents corpus 
+dictionaryresults_3 = simple_keyword_retrieval(query_3, shared_documents, verbose=True)
+print(f"Final Selected Document: {results_3[0][0]}")
 
-q3_query = "How do I sign up for rewards?"
-q3_results = simple_keyword_retrieval(q3_query, q1_documents, verbose=True)
-print(f"\nSelected Document Name: {q3_results[0][0]}")
+# Keyword Question 3 Explanation Comment Block:
+# ------------------------------------------------------------------------------
+# Explanation:
+# 1. Prediction: It will return 'None found' or fail to find the correct document.
 
-# Keyword Question 3 Post-Execution Post-Mortem Comment Block:
-# ------------------------------------------------------------------------------
-# Post-Execution Analysis:
-# The prediction that no correct document would be found was entirely correct! 
-# The function executed and returned 'None found' as expected.
-#
-# Observation on Filtered Tokens:
-# In the provided terminal execution logs, the filtered query output printed 
-# ['do', 'how', 'i', 'rewards', 'sign', 'up']. This reveals that the local copy 
-# of the 'simple_keyword_retrieval' function used a specific stopwords dictionary 
-# that did not include operational or question tokens like "do", "how", "i", or "up".
-#
-# What happened:
-# Even though the system retained these structural query words, it still produced 
-# an absolute overlap score of 0 across all text entries. This occurred because 
-# "loyalty.txt" describes the mechanics using alternative expressions—specifically 
-# using phrases like "Join our loyalty program to earn one point..."—without ever 
-# containing the exact string words "rewards" or "sign up". This test clearly 
-# demonstrates that keyword matching is highly sensitive to token choices; if a 
-# user describes a concept using synonyms or slightly different grammar, the 
-# system fails entirely, further proving why semantic embeddings are vital.
-# ------------------------------------------------------------------------------
+# 2. Reasoning: The user is looking for how to get 'rewards' or 'sign up'. 
+# The file'loyalty.txt' explains how to do exactly this, but it uses the words 'loyalty program'and 'join' instead. 
+# Since the exact words do not overlap, keyword search cannot match them.
+
+# 3. Was the prediction correct? Yes. 
+# The keyword system returned 'None found' with an overlapscore of 0 across all files 
+# because it cannot traverse synonym gaps or conceptual mappings.
+
 
 # ==============================================================================
 # --- Semantic RAG Concepts ---
