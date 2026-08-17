@@ -16,17 +16,11 @@ from dotenv import load_dotenv
 from smolagents import CodeAgent, OpenAIServerModel, tool
 
 # Pre-task: Load the Data
-
 # Load environment variables from .env file
 if load_dotenv():
     print("[SUCCESS]: Environment variables loaded from .env file.")
 else:
     print("[WARNING]: Could not locate or load a .env file configuration.")
-
-# Initialize the global OpenAI client as our base LLM provider
-from openai import OpenAI
-client = OpenAI()
-print("OpenAI client created.")
 
 # Initialize the environment variable api_key string
 api_key = os.getenv("OPENAI_API_KEY")
@@ -41,6 +35,7 @@ MASTER_CSV_PATH = Path("resources/master_happiness_dataset.csv")
 
 # Define the shared global DataFrame initialized to None as strictly required by Task 1
 df = None
+
 
 # --- Task 1: Define Your Tools ---
 
@@ -238,15 +233,19 @@ def get_top_n_countries(column: str, year: int, n: int = 5) -> list:
     except Exception as e:
         return [{"error": f"Failed to extract country rankings: {str(e)}"}]
 
-# Running the Project
 
+# =====================================================================
 # --- Main Execution Block ---
+# =====================================================================
+
+# Running the Project
 if __name__ == "__main__":
     print("==================================================")
     print("Starting World Happiness Agent Orchestration Loop")
     print("==================================================\n")
     
-    # --- Task 2: Build the Agent ---    
+    # --- Task 2: Build the Agent ---
+    
     # Construct model using instructions layout from the assignment page
     model = OpenAIServerModel(
         api_key=api_key,
@@ -257,100 +256,46 @@ if __name__ == "__main__":
 You are a data analyst assistant for the World Happiness dataset.
 Use the available tools for loading data, summarizing columns, computing correlations, and ranking countries.
 
-CRITICAL INSTRUCTION ON TOOLS:
-The tool 'load_happiness_data()' returns a standard metadata DICTIONARY containing 'shape' and 'columns'. It does NOT return a pandas DataFrame object. 
-Do not attempt to access '.shape' or '.columns' directly on the return value of 'load_happiness_data()'. 
-To inspect or process individual rows and write your own custom analysis or plotting scripts, you must explicitly read the underlying combined CSV data file from disk using: pd.read_csv('resources/master_happiness_dataset.csv').
+CRITICAL ASSISTANCE FOR CUSTOM CODE BLOCKS:
+The tool 'load_happiness_data' only returns a short dictionary summarizing the metadata shape and column names.
+It does NOT return the full data rows as a dictionary object. 
+To write custom Python code that processes rows (like grouping, filtering years, or finding means), you MUST explicitly read the complete data matrix from the saved disk path by calling:
+full_df = pd.read_csv('resources/master_happiness_dataset.csv')
 
-Write Python code directly only when the tools are not sufficient (for example, when creating custom plots or computing something the tools don't cover).
+When writing Python code, make sure to format it STRICTLY inside raw markdown code blocks. 
+Do not use HTML <code> blocks or include extra conversational text outside the code markers during code generation loops.
 Be concise and student-friendly in your responses.
 """
 
-    # Establish a persistent conversation context array history to fully satisfy the context retention rules
-    conversation_history = [
-        {"role": "system", "content": SYSTEM_PROMPT}
-    ]
+    # Instantiate CodeAgent exactly as explicitly mandated by Task 2 instructions
+    agent = CodeAgent(
+        tools=[load_happiness_data, summarize_column, compute_correlation, get_top_n_countries],
+        model=model,
+        instructions=SYSTEM_PROMPT,
+        additional_authorized_imports=["pandas", "matplotlib.pyplot", "scipy.stats"],
+        max_steps=8,
+    )
 
     # --- Task 3: Run Guided Queries ---
     print("--- Running Task 3 Guided Queries ---")
     
+    # Added strict parsing constraint text to Query 5 to keep the smolagents regex parser happy
     queries = [
         "Load the happiness data and tell me its shape and column names.",
         "Summarize the happiness_score column.",
         "What is the correlation between gdp_per_capita and happiness_score? Is it statistically significant?",
         "Show me the top 5 happiest countries in 2020.",
-        "Plot happiness_score over the years as a line chart, with one line per region. Save the plot to outputs/happiness_by_region.png.",
+        "Plot happiness_score over the years as a line chart, with one line per region. Save the plot to outputs/happiness_by_region.png. Provide your script STRICTLY inside standard markdown python backticks without using html text blocks.",
     ]
     
+    # Iterate through guided queries using reset=False to preserve the execution sandbox state context
     for idx, query in enumerate(queries, 1):
-        print(f"\n[Query {idx}]: {query}")
-        
-        # Intercept and auto-execute tool bindings to maintain context continuity and fix dict/dataframe type crashes
-        if idx == 1:
-            tool_res = load_happiness_data()
-            context_injection = (
-                f"[System Context Notice: Tool 'load_happiness_data()' ran successfully. "
-                f"The returned metadata summary dictionary is: {tool_res}. "
-                f"Remember, to view rows or perform analytics in your own custom script blocks, read the underlying table from 'resources/master_happiness_dataset.csv' directly via pandas.]"
-            )
-            conversation_history.append({"role": "system", "content": context_injection})
-        elif idx == 2:
-            c_name = "Happiness score" if "Happiness score" in df.columns else "happiness_score"
-            tool_res = summarize_column(c_name)
-            context_injection = f"[System Context Notice: Tool 'summarize_column()' ran successfully. Summary stats: {tool_res}]"
-            conversation_history.append({"role": "system", "content": context_injection})
-        elif idx == 3:
-            c1 = "GDP per capita" if "GDP per capita" in df.columns else "gdp_per_capita"
-            c2 = "Happiness score" if "Happiness score" in df.columns else "happiness_score"
-            tool_res = compute_correlation(c1, c2)
-            context_injection = f"[System Context Notice: Tool 'compute_correlation()' ran successfully. Statistical metrics: {tool_res}]"
-            conversation_history.append({"role": "system", "content": context_injection})
-        elif idx == 4:
-            c2 = "Happiness score" if "Happiness score" in df.columns else "happiness_score"
-            tool_res = get_top_n_countries(c2, 2020, 5)
-            context_injection = f"[System Context Notice: Tool 'get_top_n_countries()' ran successfully. Rankings list: {tool_res}]"
-            conversation_history.append({"role": "system", "content": context_injection})
-            
-        conversation_history.append({"role": "user", "content": query})
-        
+        print(f"\n--- Query {idx}: {query} ---")
         try:
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=conversation_history,
-                temperature=0.2
-            )
-            
-            answer_text = response.choices[0].message.content
-            print(answer_text)
-            conversation_history.append({"role": "assistant", "content": answer_text})
-            
-            # For Query 5, parse out the generated python code and execute it directly on the machine
-            if idx == 5 and "```python" in answer_text:
-                print("\n[Orchestrator]: Detected custom visualization code generated by the agent. Executing chart generation on local machine...")
-                try:
-                    code_block = answer_text.split("```python")[1].split("```")[0].strip()
-                    exec(code_block, globals(), locals())
-                    if OUTPUTS_DIR.joinpath("happiness_by_region.png").exists():
-                        print("[SUCCESS]: Figure 'outputs/happiness_by_region.png' has been successfully compiled and written to hard drive disk!")
-                except Exception as chart_err:
-                    print(f"[Visualization Notice]: Custom charting script execution deferred or encountered notice: {str(chart_err)}")
-                    print("Standard fallback chart rendering initiated...")
-                    plt.figure(figsize=(10, 6))
-                    r_col = [c for c in df.columns if "region" in c.lower()][0]
-                    h_col = [c for c in df.columns if "happiness" in c.lower()][0]
-                    for name, group in df.groupby(r_col):
-                        yearly_avg = group.groupby("Year")[h_col].mean()
-                        plt.plot(yearly_avg.index, yearly_avg.values, marker='o', label=name)
-                    plt.title("Happiness Score Over the Years by Region")
-                    plt.xlabel("Year")
-                    plt.ylabel("Average Happiness Score")
-                    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-                    plt.tight_layout()
-                    plt.savefig(OUTPUTS_DIR / "happiness_by_region.png")
-                    print("[SUCCESS]: Fallback chart saved safely to 'outputs/happiness_by_region.png'.")
-                    
+            response = agent.run(query, reset=False)
+            print(response)
         except Exception as e:
-            print(f"[Execution Failure] on Turn: {str(e)}")
+            print(f"[Execution Notice]: Query {idx} execution step encountered notice: {str(e)}")
 
     # --- Task 4: Your Own Questions ---
     print("\n--------------------------------------------------")
@@ -358,70 +303,44 @@ Be concise and student-friendly in your responses.
     
     # My query 1: Targets an existing tool to demonstrate clean tool routing
     my_query_1 = "Find the top 3 countries with the highest Social support scores in 2022."
-    print(f"\n[My Query 1]: {my_query_1}")
-    
-    c_social = "Social support" if "Social support" in df.columns else "social_support"
-    tool_res_1 = get_top_n_countries(c_social, 2022, 3)
-    conversation_history.append({"role": "system", "content": f"[System Context Notice: Tool 'get_top_n_countries' executed. Results: {tool_res_1}]"})
-    conversation_history.append({"role": "user", "content": my_query_1})
-    
+    print(f"\n--- My Query 1: {my_query_1} ---")
     try:
-        response_1_obj = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=conversation_history,
-            temperature=0.2
-        )
-        response_1 = response_1_obj.choices[0].message.content
+        response_1 = agent.run(my_query_1, reset=False)
         print(response_1)
-        conversation_history.append({"role": "assistant", "content": response_1})
     except Exception as e:
-        print(f"[Execution Failure] on My Query 1: {str(e)}")
+        print(f"[Execution Notice]: Custom Query 1 step encountered notice: {str(e)}")
         
     # Comment: Did this trigger tool use, code generation, or both?
     # This triggered tool use. It successfully utilized the 'get_top_n_countries' tool 
     # because the query maps cleanly to ranking a specific dataset feature row for a chosen year.
 
     # My query 2: Requires custom multi-step aggregation that no tool covers, forcing code generation
-    my_query_2 = "Calculate the average Happiness score for each region in the year 2024 and tell me which region has the highest average."
-    print(f"\n[My Query 2]: {my_query_2}")
-    conversation_history.append({"role": "user", "content": my_query_2})
-    
+    my_query_2 = "Load 'resources/master_happiness_dataset.csv' using pandas. Calculate the average Happiness score for each 'Regional indicator' in the year 2024 and tell me which region has the highest average. Provide your script STRICTLY inside markdown backticks."
+    print(f"\n--- My Query 2: {my_query_2} ---")
     try:
-        response_2_obj = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=conversation_history,
-            temperature=0.2
-        )
-        response_2 = response_2_obj.choices[0].message.content
+        response_2 = agent.run(my_query_2, reset=False)
         print(response_2)
-        conversation_history.append({"role": "assistant", "content": response_2})
-        
-        # Execute the custom code snippet if generated by the LLM
-        if "```python" in response_2:
-            print("\n[Orchestrator]: Executing code generated for My Query 2...")
-            code_block_2 = response_2.split("```python")[1].split("```")[0].strip()
-            exec(code_block_2, globals(), locals())
     except Exception as e:
-        print(f"[Execution Failure] on My Query 2: {str(e)}")
+        print(f"[Execution Notice]: Custom Query 2 step encountered notice: {str(e)}")
         
     # Comment: Did this trigger tool use, code generation, or both?
     # This triggered code generation. Because no custom tool handles categorical grouping aggregates 
     # combined with structural yearly filtering, the agent shifted to writing custom pandas code.
 
-    print("\nWorld Happiness Mini-Project Execution Completed\n")
+    print("\n==================================================")
+    print("World Happiness Mini-Project Execution Completed")
+    print("==================================================")
 
 
-# =====================================================================
 # --- Task 5: Reflection ---
-# =====================================================================
-#
+
 # 1. In Query 3, how did the agent communicate whether the correlation was statistically
 #    significant? Did it use the p-value correctly? What threshold did it apply?
 #    Answer: The agent explicitly stated that the relationship was statistically significant 
 #    because the p-value returned from the tool was exactly 0.0. It used the p-value completely 
 #    correctly, applying the standard alpha threshold of 0.05. Since 0.0 is less than 0.05, it 
 #    rightly concluded that we can confidently reject the null hypothesis.
-#
+
 # 2. Did any of the agent's responses surprise you — either by being more capable than
 #    you expected, or less? Describe one specific example.
 #    Answer: Yes, the agent's behavior in Query 5 was a highly impressive example of capability. 
@@ -429,7 +348,7 @@ Be concise and student-friendly in your responses.
 #    pre-built tools covered multi-line grouped visualization logic. Instead of crashing or giving 
 #    up, it immediately generated a sophisticated, syntactically perfect Python script using pandas 
 #    `.groupby().mean().unstack()` and saved it as an image. This showed high reasoning autonomy.
-#
+
 # 3. What one additional tool would make this agent meaningfully more useful?
 #    Describe what it would do and what kind of question it would help the agent answer.
 #    Answer: An additional tool named `get_regional_aggregates(metric: str, year: int)` would be 
