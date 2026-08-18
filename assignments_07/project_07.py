@@ -21,7 +21,7 @@ api_key = os.getenv("OPENAI_API_KEY")
 df = None
 
 # Updated assignment relative path parameters matching your specified location tracking file
-DATA_PATH = "resources/master_happiness_dataset.csv"
+DATA_PATH = "assignments_01/outputs/merged_happiness.csv"
 FALLBACK_DIR = "assignments/resources/happiness_project/"
 
 # Ensure output directories exist relative to the running workspace context
@@ -101,12 +101,16 @@ def load_happiness_data() -> dict:
     if "year" in df.columns:
         df["year"] = pd.to_numeric(df["year"], errors="coerce").fillna(2020).astype(int)
 
-    # Provide an explicit data loading footprint description for the CodeAgent sandbox loop
-    print(f"[Tool Log]: Dataset successfully loaded into global memory. To load and plot these rows in your custom python code scripts, always use exactly:\n"
-          f"import pandas as pd\n"
-          f"happiness_df = pd.read_csv('{path}')\n"
-          f"happiness_df.columns = [c.strip().lower().replace(' ', '_') for c in happiness_df.columns]\n"
-          f"if 'ladder_score' in happiness_df.columns: happiness_df = happiness_df.rename(columns={{'ladder_score': 'happiness_score'}})")
+    # FRAMEWORK STATE INJECTION: Enforce strict column standardization rules right inside the 
+    # injected sandbox memory scope. This ensures that any dynamically written python code 
+    # referencing 'df' will successfully match the clean snake_case columns, eliminating KeyErrors!
+    try:
+        if 'agent' in globals() or 'agent' in locals():
+            agent.state["df"] = df
+        elif idx_tracker := [obj for obj in globals().values() if isinstance(obj, CodeAgent)]:
+            idx_tracker[0].state["df"] = df
+    except Exception:
+        pass
 
     return {
         "shape": list(df.shape),
