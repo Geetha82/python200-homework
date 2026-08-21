@@ -261,8 +261,8 @@ class CsvManager:
             ax = self.df.plot(x=x, y=y, kind=plot_type)
             ax.set_title(f"{title_csv} | {plot_type.title()} plot: {y} vs {x}")
         
-        os.makedirs("assignments_07/outputs", exist_ok=True)
-        plt.savefig("assignments_07/outputs/bike_commute_csv.png")
+        os.makedirs("outputs", exist_ok=True)
+        plt.savefig("outputs/bike_commute_csv.png")
         plt.close()
         return f"Plotted {y} vs {x} as a {plot_type}."
 

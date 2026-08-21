@@ -26,7 +26,7 @@ DATA_PATH = "assignments_01/outputs/merged_happiness.csv"
 FALLBACK_DIR = "assignments/resources/happiness_project/"
 
 # Ensure the required outputs directory structure exists locally before running plots
-os.makedirs("assignments_07/outputs", exist_ok=True)
+os.makedirs("outputs", exist_ok=True)
 
 # =====================================================================
 # --- Task 1: Define Your Tools with Google-Style Docstrings ---
@@ -261,7 +261,7 @@ if __name__ == "__main__":
     # with the requested column, year, and slice parameters, outputting the clean target ranking records immediately.
 
     # My query 2
-    my_query_2 = "Compute the average happiness_score grouped by region across all tracked entries. Save a local horizontal bar chart tracking this to assignments_07/outputs/regional_averages.png"
+    my_query_2 = "Compute the average happiness_score grouped by region across all tracked entries. Save a local horizontal bar chart tracking this to outputs/regional_averages.png"
     print(f"\n# My query 2\nmy_query_2 = \"{my_query_2}\"")
     response_2 = agent.run(my_query_2, reset=False)
     print(response_2)
