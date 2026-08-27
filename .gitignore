@@ -1,5 +1,11 @@
-.venv/
-venv/
-__pycache__/
+
+# Catch any folder named venv or .venv anywhere in the project
+**/venv/
+**/.venv/
+
+# Catch Python cache files
+**/__pycache__/
 *.pyc
+
+# Catch your local environment keys
 .env
