@@ -1,0 +1,364 @@
+import os
+import json
+from dotenv import load_dotenv
+from openai import OpenAI
+
+# Load the .env file so we can read the secret API key
+load_dotenv()
+
+# Set up the OpenAI client to talk to the AI model
+client = OpenAI()
+
+# ----- Task 1: Setup and System Prompt
+def get_completion(messages, model="gpt-4o-mini", temperature=0.7):
+    """
+    This function sends our list of messages to OpenAI and gets a text reply back.
+    We limit the response length using max_completion_tokens to keep things fast.
+    """
+    response = client.chat.completions.create(
+        model=model,
+        messages=messages,
+        temperature=temperature,
+        max_completion_tokens=400
+    )
+    return response.choices[0].message.content
+
+# MY DESIGN CHOICE (TASK 1 CHECK):
+# I made a deliberate choice to use clear numbers (1, 2, 3) and capitalized 
+# words like "MUST" for the rules. I did this because AI models follow 
+# rules much better when they are listed in a clear order. 
+#
+# When I read this prompt out loud, it sounds very specific. It tells the 
+# AI exactly who to help (career changers) and what it is allowed to talk 
+# about (resumes, cover letters, and interviews). It cannot be used as a 
+# general calculator or a general coding bot because of these strict rules.
+
+SYSTEM_PROMPT = (
+    "You are an expert job application coach. Your role is to help job seekers, "
+    "particularly career changers, translate their unique professional experiences "
+    "into strong application content.\n\n"
+    "CRITICAL BEHAVIORAL CONSTRAINTS:\n"
+    "1. You must stay strictly focused on job application materials (such as resumes, "
+    "cover letters, and interview preparation).\n"
+    "2. At the end of every response where you provide text for the user to use, you "
+    "MUST remind the user to review and edit your output before submitting it anywhere.\n"
+    "3. You must explicitly acknowledge that you may not know the user's specific "
+    "industry norms, and state that the user should use their own judgment."
+)
+
+# Start conversation list by giving the AI its role instructions
+conversation_history = [
+    {"role": "system", "content": SYSTEM_PROMPT}
+]
+
+# SYSTEM PROMPT CLARITY CHECK (Task 1 Reflection):
+# Reading the system prompt aloud confirms it functions as a highly specific 
+# briefing rather than a vague assistant. It cannot be used for general tasks 
+# like math or creative writing because it explicitly restricts operations to:
+#  - Target Audience: Career changers needing skill translation.
+#  - Deliverable Scope: Limited exclusively to resumes, cover letters, and interviews.
+#  - Explicit Disclaimers: Forcing a review reminder and industry norm acknowledgment.
+
+
+# ----- Task 2: Bullet Point Rewriter
+def rewrite_bullets(bullets: list[str]) -> list[dict]:
+    """
+    Takes a list of raw resume bullet points, sends them to OpenAI in a structured
+    prompt, parses the required JSON response, and outputs them side-by-side.
+    """
+    # Format the input list into a clean, markdown-delimited string of bullets
+    bullet_text = "\n".join(f"- {b}" for b in bullets)
+    
+    # Structure the prompt with clear behavior expectations and strict JSON constraints
+    prompt = f"""
+You are a professional resume coach helping a career changer. 
+Rewrite each resume bullet point below to be more specific, results-oriented, and compelling. 
+Use strong action verbs and imply high-value professional skills. 
+Do not invent specific facts or names that aren't implied by the original.
+
+Return ONLY a valid JSON list. Do not wrap the JSON in markdown code blocks like ```json.
+Each item in the list must be an object with exactly two keys:
+1. "original" - containing the exact original bullet point text.
+2. "improved" - containing your rewritten version.
+
+Bullet points to rewrite:
+\"\"\"
+{bullet_text}
+\"\"\"
+"""
+    # Packages the prompt into the user role format
+    messages = [{"role": "user", "content": prompt}]
+    
+    # Call our Task 1 completion helper
+    raw_response = get_completion(messages, temperature=0.8)
+    
+    try:
+        # Parse data cleanly from the raw response string
+        improved_bullets = json.loads(raw_response)
+        
+        # FIXED: Prints the original and improved bullets side-by-side INSIDE the function as requested
+        print("\n=== RESUME BULLET POINT UPGRADES ===")
+        for i, item in enumerate(improved_bullets, start=1):
+            print(f"\n[Pair #{i}]")
+            print(f" Original: {item.get('original')}")
+            print(f" Improved: {item.get('improved')}")
+            print("  " + "-" * 40)
+        print("====================================")
+        
+        return improved_bullets
+        
+    except json.JSONDecodeError as error:
+        # FIXED: Help debug the prompt by printing the error and the raw model response instead of failing silently
+        print(f"\n⚠️ JSON Parse Failure: {error}")
+        print("--- Raw Unparsed Model Response ---")
+        print(raw_response)
+        print("----------------------------------")
+        return []
+        
+# --- Task 2 Reflection Commentary ---
+# 
+# 1. Why the starter bullets are weak:
+# - Passive/Vague Action Verbs: They rely on generic, low-impact words ("Helped", "Made", "Worked") 
+#   that outline basic task actions instead of showing high-level accomplishments.
+# - Missing How/Results: They do not explain *how* the work was done, *what* tools or methodologies 
+#   were applied, or *what* positive business value resulted from the actions.
+# - No Professional Jargon: They read like a basic daily chore check-list rather than emphasizing 
+#   highly transferable white-collar skills.
+# 
+# 2. The kinds of changes the model suggested (Grounded in Actual Terminal Output):
+# - Swapped Verbs for Strategic Actions: It upgraded weak verbs into strong professional options 
+#   such as "Resolved", "Compiled and presented", and "Collaborated".
+# - Injected Business Value/Outcomes: It framed simple chores around major corporate impacts, adding 
+#   consequences like "enhancing satisfaction and loyalty" and "enabling informed decision-making."
+# - Contextualized Skill Complexity: It transformed a basic task like "worked with a team" into an 
+#   advanced career skill by rephrasing it as "collaborating with a cross-functional team" to deliver 
+#   "project milestones ahead of schedule."
+
+
+# ----- Task 3: Cover Letter Generator
+
+def generate_cover_letter(job_title: str, background: str) -> str:
+    """
+    Takes a target job title and a summary of the user's background,
+    uses few-shot prompting with strong examples to guide the tone,
+    and returns a tailored, high-impact cover letter opening paragraph.
+    """
+    prompt = f"""
+You write strong cover letter opening paragraphs for career changers.
+The paragraph should be 3-5 sentences: confident, specific, and free of clichés.
+
+Here are two examples of the style and tone you should match:
+
+Example 1:
+Role: Data Analyst at a healthcare nonprofit
+Background: Seven years as a registered nurse, recently completed a data analytics bootcamp.
+Opening: After seven years as a registered nurse, I've spent my career making decisions under pressure using incomplete information — which turns out to be excellent training for data analysis. I recently completed a data analytics program where I built dashboards tracking patient outcomes across departments. I'm excited to bring that combination of clinical context and technical skill to [Company]'s mission-driven work.
+
+Example 2:
+Role: Junior Software Engineer at a fintech startup
+Background: Ten years in retail banking operations, self-taught Python developer for two years.
+Opening: I spent a decade on the operations side of banking, watching technology decisions get made by people who had never processed a wire transfer or resolved a failed ACH batch. That frustration turned into curiosity, and two years of self-teaching Python later, I'm ready to be on the other side of those decisions. I'm applying to [Company] because your work on payment infrastructure is exactly where my domain expertise and new technical skills intersect.
+
+Now write an opening paragraph for this person. Remember, you MUST strictly limit your output to a single paragraph containing exactly 3 to 5 sentences max:
+Role: {job_title}
+Background: {background}
+Opening:
+"""
+    # Wrap the few-shot prompt string into a user message
+    messages = [{"role": "user", "content": prompt}]
+    return get_completion(messages, temperature=0.7)
+
+# TASK 3 REFLECTION & ASSESSMENT COMMENTS:
+# 
+# 1. Why I chose these particular examples:
+#    - Both examples explicitly feature professionals transitioning from 
+#      traditional industries (Nursing, Retail Banking) into tech roles.
+#    - They show how to proudly pivot past experiences into modern technical 
+#      advantages rather than treating a non-traditional background as a flaw.
+# 
+# 2. What the few-shot pattern helps control in the output:
+#    - It strictly dictates the structure, length (3-5 sentences), and style.
+#    - It eliminates tired, automated clichés like "To Whom It May Concern, I am 
+#      writing to express my enthusiastic interest in your open vacancy..."
+#    - It forces the AI to use concrete project/tool references (like Prefect and Pandas) 
+#      instead of hiding behind vague adjectives.
+#
+# 3. Code Verification Checks:
+#    - Tailored Check: The paragraph actively blends teaching skills ("breaking down 
+#      complex concepts") with data tools, keeping it personal.
+#    - Integrity Check: The model strictly used the provided tools (Prefect and Pandas) 
+#      and did not make up an arbitrary university degree or fake previous employer.
+
+# ----- Task 4: Moderation Check
+def is_safe(text: str) -> bool:
+    """
+    Sends the user's text to OpenAI's safety system.
+    Returns True if the text is safe, and False if it breaks safety rules.
+    """
+    # Ask the moderation API to look at our text
+    result = client.moderations.create(
+        model="omni-moderation-latest",
+        input=text
+    )
+    
+    # Check if the very first result item was flagged as unsafe
+    flagged = result.results[0].flagged
+    
+    # If the text is dangerous or inappropriate, warn the user and return False
+    if flagged:
+        print("\n[Safety Warning]: I can only assist with professional career development and job applications.")
+        print("Please rephrase your request to keep it professional and workplace-appropriate.")
+        return False
+        
+    # If everything is perfectly safe, return True
+    return True
+
+# TASK 5: THE CHATBOT LOOP (UNIFIED CONVERSATIONAL STATE MACHINE)
+def run_chatbot():
+
+    # 1. Initialize conversation history with your system prompt
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT}
+    ]
+        
+    print("=" * 50)
+    print("Job Application Helper")
+    print("=" * 50)
+    print("I can help you with:")
+    print(" 1. Rewriting resume bullet points")
+    print(" 2. Drafting a cover letter opening")
+    print(" 3. Any other questions about your application")
+    print("\nType 'quit' or 'exit' at any time to exit.\n")
+    
+    while True:
+        # Every single input uses this unified line to maintain conversational continuity
+        user_input = input("You: ").strip()
+        
+        # 2. Handle exit condition instantly
+        if user_input.lower() in {"quit", "exit"}:
+            print("\nJob Application Helper: Good luck with your applications!")
+            break
+            
+        # 3. Skip blank lines safely
+        if not user_input:
+            continue
+            
+        # 4. Run safety filtration block before processing states
+        if not is_safe(user_input):
+            continue  
+            
+         # 5. Check if the user wants to rewrite bullets
+        if "bullet" in user_input.lower() or "resume" in user_input.lower():
+            messages.append({"role": "user", "content": user_input})
+            
+            print("\nJob Application Helper: Paste your bullet points below, one per line.")
+            print("When you're done, type 'DONE' on its own line.\n")
+            
+            raw_bullets = []
+            while True:
+                line = input().strip()
+                if line.upper() == "DONE":
+                    break
+                if line:
+                    raw_bullets.append(line)
+                    
+            if raw_bullets:
+                print("\nJob Application Helper: Upgrading your bullet points now...")
+                
+                # The function is called, prints side-by-side internally, and returns the parsed list
+                results = rewrite_bullets(raw_bullets)
+                
+                if results:
+                    # HARDENED HISTORY FORMAT: Formatted cleanly as a markdown block so the AI retains 
+                    # clear knowledge of your background updates in future turns
+                    history_summary = "I have successfully optimized your resume bullet points. Here are the upgrades:\n\n"
+                    for idx, item in enumerate(results, start=1):
+                        history_summary += f"Pair #{idx}:\n- Original: {item.get('original')}\n- Improved: {item.get('improved')}\n\n"
+                    
+                    messages.append({"role": "assistant", "content": history_summary})
+                else:
+                    messages.append({"role": "assistant", "content": "Attempted to rewrite bullets, but an error occurred."})
+            else:
+                print("\nJob Application Helper: No bullet points received.")
+                messages.append({"role": "assistant", "content": "No bullet points were provided for rewriting."})
+                
+
+        # 6. Check if the user wants a cover letter
+        elif "cover letter" in user_input.lower():
+            messages.append({"role": "user", "content": user_input})
+            
+            #  Reverted to linear, standard nested input prompts with zero state handling
+            job_title = input("Job Application Helper: What is the job title? ").strip()
+            background = input("Job Application Helper: Briefly describe your background: ").strip()
+            
+            if job_title and background:
+                print("\nJob Application Helper: Crafting your high-impact opening paragraph...")
+                
+                # Loop directly calls the task function and prints the paragraph result cleanly
+                cover_letter_result = generate_cover_letter(job_title, background)
+                
+                print("\n=== GENERATED COVER LETTER OPENING ===")
+                print(cover_letter_result)
+                print("========================================")
+                
+                # HARDENED HISTORY FORMAT: Stores the complete, clean paragraph output directly to history
+                messages.append({"role": "assistant", "content": f"Here is the generated cover letter opening paragraph for the {job_title} role:\n\n{cover_letter_result}"})
+            else:
+                print("\nJob Application Helper: Both job title and background are required.")
+                messages.append({"role": "assistant", "content": "Cover letter generation canceled due to missing user fields."})
+
+        # 7. Otherwise, handle it as a regular chat turn
+        else:
+            # - Append the user's message to `messages`
+            messages.append({"role": "user", "content": user_input})
+            
+            # - Call get_completion(messages)
+            reply = get_completion(messages, temperature=0.7)
+            
+            # - Print the reply
+            print(f"\nJob Application Helper: {reply}\n")
+            
+            # - Append the reply to `messages` as an assistant message
+            messages.append({"role": "assistant", "content": reply})
+
+        
+# =====================================================================
+# MAIN APPLICATION ENTRY POINT
+# =====================================================================
+if __name__ == "__main__":
+    run_chatbot()
+
+# TASK 6: ETHICS REFLECTION
+# Format Chosen: Option A — Comment block
+
+# 1. How might training data produce biased advice or favor certain backgrounds?
+# Because the underlying AI model was trained primarily on a large corpus of text 
+# from the internet, it heavily favors standard corporate Western communication 
+# styles, white-collar industry jargon, and formal American English. This can 
+# produce biased advice by penalizing applicants from cultures that value modesty, 
+# as the model naturally pushes for aggressive self-promotion and assertive verbs. 
+# It may also offer weaker, more generic advice for local non-traditional fields, 
+# blue-collar jobs, or specialized global industries that are underrepresented 
+# in standard online corporate literature.
+#
+# 2. What could go wrong if a job-seeker submitted unreviewed output to an employer?
+# Submitting unreviewed output poses a massive risk of "hallucinations," where the 
+# model invents fake metrics, names placeholder tools, or fabricates job responsibilities 
+# to make a bullet point sound more compelling. An unreviewed document might also 
+# contain literal placeholders like "[Company Name]" or "[Insert Year]," which looks 
+# incredibly unprofessional. If an employer notices these errors or interviews the 
+# candidate on an AI-invented technical credential they do not actually possess, 
+# the candidate will instantly lose credibility and be disqualified for dishonesty.
+#
+# 3. What is one guardrail you would add if you were deploying this professionally?
+# If deploying this tool professionally, I would add a user interface (UI) guardrail 
+# that prevents copy-pasting until an explicit verification checkbox is clicked. 
+# Specifically, the web interface would display a popup modal when the user clicks 
+# "Copy Text." This modal would show a warning stating: "AI text can contain inaccurate 
+# metrics or hallucinated skills. Please verify that every statement is 100% accurate 
+# to your personal history." The user would have to check a box reading, "I have reviewed 
+# this text for truthfulness," before the system unlocks the clipboard copy function.
+# =====================================================================
+
+
+
