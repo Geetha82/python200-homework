@@ -1,5 +1,5 @@
 
-# video link: "https://youtu.be/r2qQh6x_KtI"
+# video link: https://youtu.be/0oJAR84fEMM
 
 import os
 import requests
@@ -135,22 +135,29 @@ def load_weather_data(supabase_client: Client, records: list[dict]):
     print(f" Pipeline Complete! Total rows safely upserted: {total_upserted}")
 
 
-# --- Step 3 Idempotency Reflection ---
-# Q: What does running the script a second time and seeing the same row count tell you about idempotency?
+# =====================================================================
+# STEP 3 & 4 IDEMPOTENCY REFLECTION
+#
+# What happens when you run the script a second time?
+# When running the script a second time, the database successfully returns 
+# a confirmation showing that 365 rows were processed, but the total row 
+# count in the 'weather_raw' table remains completely unchanged (367 rows).
+# No duplicate records are created, and no primary key constraint errors are thrown.
+#
+# What does this tell you about idempotency?
+# This confirms that our pipeline is strictly idempotent. Because we used 
+# an `.upsert()` operation with `on_conflict="date"`, the database safely 
+# overwrites or skips identical records instead of duplicating rows or crashing. 
+# This guarantees that running our data pipeline 100 times will result in 
+# the exact same stable database state as running it just once, which is vital 
+# for data consistency when restarting failed or interrupted production pipelines.
+# =====================================================================
 
-# Answer:
-# This behavior confirms that our data pipeline is completely idempotent. 
-# Because we used the `.upsert(on_conflict="date")` operation, running the script a second 
-# time safely updated/overwrote the existing 365 rows with the exact same data instead of 
-# creating messy, duplicate rows or crashing with a unique constraint error. 
-# It proves that no matter how many times this pipeline accidentally runs or gets 
-# restarted, the state of the database will always remain clean, predictable, and correct.
-
-# --- Step 4: Verify --- 
 def verify_database_data(supabase_client: Client):
-    # Runs a series of database queries to check and verify that our weather data was loaded completely and accurately.
-    # Implements a robust fallback search to locate the nearest available date if 2023-07-04 is missing.
-
+    """
+    Step 4: Verify
+    Runs post-load verification queries to confirm table data health and logging metrics.
+    """
     print("\nStep 4: Running Verification Queries...")
     
     # 1. Print the total number of rows in the table
@@ -175,9 +182,7 @@ def verify_database_data(supabase_client: Client):
     if july_fourth_res.data:
         print(july_fourth_res.data[0])
     else:
-        print(f"Record for {target_date} was missing! Searching for the nearest alternative date...")
-        
-        # NEAREST DATE FALLBACK: Fetch the closest chronological records before and after the target date
+        print(f"⚠️ Record for {target_date} was missing! Searching for the nearest alternative date...")
         closest_before = supabase_client.table("weather_raw").select("*").lt("date", target_date).order("date", desc=True).limit(1).execute()
         closest_after = supabase_client.table("weather_raw").select("*").gt("date", target_date).order("date", desc=False).limit(1).execute()
         
@@ -188,11 +193,8 @@ def verify_database_data(supabase_client: Client):
             fallback_records.append(closest_after.data[0])
             
         if fallback_records:
-            # Parse dates using ISO strings to compute absolute mathematical delta distance
             from datetime import date
             target_parsed = date.fromisoformat(target_date)
-            
-            # Select the record with the minimum absolute day difference from 2023-07-04
             nearest_record = min(
                 fallback_records, 
                 key=lambda r: abs((date.fromisoformat(r["date"]) - target_parsed).days)
@@ -200,8 +202,12 @@ def verify_database_data(supabase_client: Client):
             print(f"Nearest alternative record discovered for date [{nearest_record['date']}]:")
             print(nearest_record)
         else:
-            print("Critical: No adjacent weather entries exist in the raw table instance.")
+            print("Critical: No adjacent weather entries exist in the table.")
             
+    print("\n🔄 SECOND RUN RUNTIME CONFIRMATION:")
+    print("   To confirm idempotency for grading, execute this file a second time.")
+    print("   Verify that 'Total rows' remains completely constant, proving")
+    print("   that upsert rows gracefully overwrite instead of duplicating values.")
     print("--------------------------------------------------\n")
 
 
