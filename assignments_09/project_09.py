@@ -1,5 +1,3 @@
-
-# video link:
 # https://youtu.be/0oJAR84fEMM
 
 
