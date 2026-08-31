@@ -146,10 +146,11 @@ def load_weather_data(supabase_client: Client, records: list[dict]):
 # It proves that no matter how many times this pipeline accidentally runs or gets 
 # restarted, the state of the database will always remain clean, predictable, and correct.
 
-# --- Step 4: Verify ---
+# --- Step 4: Verify --- 
 def verify_database_data(supabase_client: Client):
-
     # Runs a series of database queries to check and verify that our weather data was loaded completely and accurately.
+    # Implements a robust fallback search to locate the nearest available date if 2023-07-04 is missing.
+
     print("\nStep 4: Running Verification Queries...")
     
     # 1. Print the total number of rows in the table
@@ -158,26 +159,51 @@ def verify_database_data(supabase_client: Client):
     print(f"Total number of rows in 'weather_raw': {total_rows}")
     
     # 2. Print the earliest and latest dates in the table
-    # Default is ascending (earliest). For latest, we pass desc=True.
-    earliest_res = supabase_client.table("weather_raw").select("date").order("date").limit(1).execute()
+    earliest_res = supabase_client.table("weather_raw").select("date").order("date", desc=False).limit(1).execute()
     latest_res = supabase_client.table("weather_raw").select("date").order("date", desc=True).limit(1).execute()
     
-    # Extract values from the first item [0] of the returned list
     earliest_date = earliest_res.data[0]["date"] if earliest_res.data else "None"
     latest_date = latest_res.data[0]["date"] if latest_res.data else "None"
     print(f"Earliest date in table: {earliest_date}")
-    print(f"Latest date in table:   {latest_date}")
+    print(f"Latest date in table: {latest_date}")
     
-    # 3. Print the specific row record for 2023-07-04
+    # 3. Print the specific row record for 2023-07-04 (with nearest date fallback)
     target_date = "2023-07-04"
     july_fourth_res = supabase_client.table("weather_raw").select("*").eq("date", target_date).execute()
     
-    print(f"\n Weather record for {target_date}:")
+    print(f"\nWeather record for {target_date}:")
     if july_fourth_res.data:
         print(july_fourth_res.data[0])
     else:
-        print(f" Record for {target_date} was missing!")
+        print(f"Record for {target_date} was missing! Searching for the nearest alternative date...")
+        
+        # NEAREST DATE FALLBACK: Fetch the closest chronological records before and after the target date
+        closest_before = supabase_client.table("weather_raw").select("*").lt("date", target_date).order("date", desc=True).limit(1).execute()
+        closest_after = supabase_client.table("weather_raw").select("*").gt("date", target_date).order("date", desc=False).limit(1).execute()
+        
+        fallback_records = []
+        if closest_before.data:
+            fallback_records.append(closest_before.data[0])
+        if closest_after.data:
+            fallback_records.append(closest_after.data[0])
+            
+        if fallback_records:
+            # Parse dates using ISO strings to compute absolute mathematical delta distance
+            from datetime import date
+            target_parsed = date.fromisoformat(target_date)
+            
+            # Select the record with the minimum absolute day difference from 2023-07-04
+            nearest_record = min(
+                fallback_records, 
+                key=lambda r: abs((date.fromisoformat(r["date"]) - target_parsed).days)
+            )
+            print(f"Nearest alternative record discovered for date [{nearest_record['date']}]:")
+            print(nearest_record)
+        else:
+            print("Critical: No adjacent weather entries exist in the raw table instance.")
+            
     print("--------------------------------------------------\n")
+
 
 
     # --- Run the Complete Pipeline End-to-End ---
