@@ -187,6 +187,7 @@ def safe_upsert(supabase: Client, records: list[dict]) -> list[dict]:
 # =====================================================================
 
 
+# --- Script Execution Routine ---
 if __name__ == "__main__":
     print("--- Running Reviewer-Aligned SDK Warmup Checks ---")
     try:
@@ -194,44 +195,66 @@ if __name__ == "__main__":
         client = get_client()
         print("Successfully generated a valid Supabase client!")
         
-        # 2. CRUD Q1 TEST: Standard Literal Insert
-        print("\n--- Testing Q1: Literal Insert ---")
-        try:
-            insert_test_record(client)
-        except Exception as insert_error:
-            print(f"\nINTENTIONAL CRASH CAUGHT (Demonstrating Q1 Behavior):")
-            print(f"   As expected by the prompt, running a literal .insert() twice failed with:")
-            print(f"   {insert_error}\n")
+        # 2. RUNNABLE CRUD Q1 TEST: Separate Success from Duplicate Crash
+        print("\n--- Testing Q1: Literal Insert Behavior ---")
         
-        # 3. CRUD Q2 TEST & PRINTOUT: Range Query Verification
-        today_str = datetime.date.today().isoformat()
-        print(f"Executing Q2 Range Query Test bounding today's record ({today_str})...")
-        matching_rows = get_records_by_date_range(client, start=today_str, end=today_str)
+        # We calculate yesterday's date string dynamically to guarantee a fresh record target
+        yesterday_str = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+        
+        test_record_payload = {
+            "date": yesterday_str,
+            "temperature_2m_max": 24.5,
+            "temperature_2m_min": 12.2,
+            "precipitation_sum": 0.0,
+            "wind_speed_10m_max": 14.3
+        }
+        
+        # A. Demonstrate FIRST run (Successful confirmation)
+        print(f" Executing Run #1: Inserting a fresh record for {yesterday_str}...")
+        success_res = client.table("weather_raw").insert(test_record_payload).execute()
+        print(f"Run #1 SUCCESS: Record safely created. (Returned: {success_res.data[0]['date']})")
+        
+        # B. Demonstrate SECOND run (Duplicate confirmation)
+        print(f"👉 Executing Run #2: Attempting to insert identical date {yesterday_str} again...")
+        try:
+            client.table("weather_raw").insert(test_record_payload).execute()
+        except Exception as duplicate_error:
+            print(f"Run #2 EXPECTED FAILURE: The primary key constraint successfully caught the duplicate!")
+            print(f"   Error Message: {duplicate_error}\n")
+        
+        # 3. RUNNABLE CRUD Q2 TEST & PRINTOUT:
+        print(f"Executing Q2 Range Query Test bounding yesterday's record ({yesterday_str})...")
+        matching_rows = get_records_by_date_range(client, start=yesterday_str, end=yesterday_str)
         
         print(f"Found {len(matching_rows)} matching records from range request:")
         for row in matching_rows:
             print(row)
         print("-" * 60)
         
-        # 4. CRUD Q3 BATCH SAFE UPSERT TEST: Batch List Function Check
+        # 4. RUNNABLE CRUD Q3 BATCH SAFE UPSERT TEST:
         print("\n Executing Q3 safe_upsert batch operation test...")
+        today_str = datetime.date.today().isoformat()
         tomorrow_str = (datetime.date.today() + datetime.timedelta(days=1)).isoformat()
+        
         batch_payload = [
             {
-                "date": today_str,  # Already exists: updates the row metrics seamlessly
+                "date": yesterday_str,  # Updates the row we created in step 2A safely
                 "temperature_2m_max": 28.0,
                 "temperature_2m_min": 14.0,
                 "precipitation_sum": 0.5,
-                "wind_speed_10m_max": 11.2},
-                    {
-            "date": tomorrow_str, # New target date: performs clean insert
-            "temperature_2m_max": 22.0,
-            "temperature_2m_min": 10.5,
-            "precipitation_sum": 0.0,
-            "wind_speed_10m_max": 8.4
+                "wind_speed_10m_max": 11.2
+            },
+            {
+                "date": tomorrow_str,   # Completely new target date
+                "temperature_2m_max": 22.0,
+                "temperature_2m_min": 10.5,
+                "precipitation_sum": 0.0,
+                "wind_speed_10m_max": 8.4
             }
-            ]
+        ]
+        
         upserted_rows = safe_upsert(client, batch_payload)
-        print("\n🎉 Warmup script validation suite fully processed successfully!")
+        print("\nWarmup script validation suite fully processed successfully!")
+            
     except Exception as e:
-        print(f" Warmup execution halted prematurely: {e}")
+        print(f" Warmup execution halted prematurely due to unhandled error: {e}")

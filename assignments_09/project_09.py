@@ -154,30 +154,39 @@ def load_records_to_cloud(raw_api_data: dict):
 # for data consistency when restarting failed or interrupted production pipelines.
 # =====================================================================
 
-
+    
 # Step 4: Verify
 def verify_database_data(supabase_client: Client):
 
-    # Runs post-load verification queries to confirm table data health.
+    # Runs a series of database queries to check and verify that our weather data was loaded completely and accurately.
+    # Prints an explicit, dedicated total row count query result alongside boundary dates.
     print("\nStep 4: Running Boundary Verification Queries...")
     
+    # 1. DEDICATED TOTAL ROW COUNT QUERY
+    count_response = supabase_client.table("weather_raw").select("*", count="exact").execute()
+    total_rows = count_response.count if count_response.count is not None else len(count_response.data)
+    
+    # 2. Earliest and Latest Dates Check
     earliest_res = supabase_client.table("weather_raw").select("date").order("date", desc=False).limit(1).execute()
     latest_res = supabase_client.table("weather_raw").select("date").order("date", desc=True).limit(1).execute()
     
     earliest_date = earliest_res.data[0]["date"] if earliest_res.data else "None"
     latest_date = latest_res.data[0]["date"] if latest_res.data else "None"
-    print(f"1. Earliest date in table: {earliest_date}")
-    print(f"2. Latest date in table:   {latest_date}")
     
-    # Target Row Lookup (July 4th, 2023 with Nearest Date Fallback)
+    # 3. Target Row Lookup (July 4th, 2023 with Nearest Date Fallback)
     target_date = "2023-07-04"
     july_fourth_res = supabase_client.table("weather_raw").select("*").eq("date", target_date).execute()
     
-    print(f"\n3. Weather record for {target_date}:")
+    # STEP 4 TERMINAL OUTPUT SUMMARY
+    print("\n================ STEP 4 VERIFICATION RESULTS ================")
+    print(f"EXPLICIT TOTAL ROW COUNT QUERY RESULT: {total_rows} rows found.")
+    print(f"HISTORICAL TIMELINE BOUNDARIES: Earliest -> {earliest_date} | Latest -> {latest_date}")
+    print(f"TARGET RECORD SEARCH FOR {target_date}:")
+    
     if july_fourth_res.data:
         print(july_fourth_res.data[0])
     else:
-        print(f"Record for {target_date} was missing! Searching for nearest date...")
+        print(f" Record for {target_date} was missing! Searching for nearest date...")
         closest_before = supabase_client.table("weather_raw").select("*").lt("date", target_date).order("date", desc=True).limit(1).execute()
         closest_after = supabase_client.table("weather_raw").select("*").gt("date", target_date).order("date", desc=False).limit(1).execute()
         
@@ -197,8 +206,9 @@ def verify_database_data(supabase_client: Client):
             print(f"Nearest alternative record discovered for date [{nearest_record['date']}]:")
             print(nearest_record)
         else:
-            print("Critical: No adjacent weather entries exist in the table.")
-    print("--------------------------------------------------\n")
+            print(" Critical error: No adjacent weather entries exist in the table.")
+    print("==============================================================\n")
+
 
 
 
