@@ -1,4 +1,4 @@
-# https://youtu.be/0oJAR84fEMM
+# Video link -  https://youtu.be/0oJAR84fEMM
 
 
 import os
@@ -54,6 +54,7 @@ def extract_historical_weather(lat: float, lon: float, start_date: str, end_date
     
     return payload
 
+# STEP 2 & 3: TRANSFORM + LOAD
 def load_records_to_cloud(raw_api_data: dict):
     
     # Step 2 & 3: Transform + Load
@@ -87,8 +88,8 @@ def load_records_to_cloud(raw_api_data: dict):
     # --- STEP 3: LOADING (UPSERT) ---
     print(f" Loading {len(records)} records into Supabase 'weather_raw'...")
     response = supabase.table("weather_raw").upsert(records, on_conflict="date").execute()
-    print(f" Primary Load successful. Affected rows reported by API: {len(response.data)}")
-    
+    print(f"Confirmation: Number of rows successfully upserted into the database: {len(response.data)}")   
+
     # --- AUTOMATED CODE-DRIVEN SECOND RUN & IDEMPOTENCY TEST ---
     print("\n Running Automated Idempotency Verification Test...")
     
@@ -157,13 +158,15 @@ def load_records_to_cloud(raw_api_data: dict):
     
 # Step 4: Verify
 def verify_database_data(supabase_client: Client):
-
-    # Runs a series of database queries to check and verify that our weather data was loaded completely and accurately.
-    # Prints an explicit, dedicated total row count query result alongside boundary dates.
+    """
+    Runs a series of database queries to check and verify that our weather data 
+    was loaded completely and accurately.
+    """
     print("\nStep 4: Running Boundary Verification Queries...")
     
-    # 1. DEDICATED TOTAL ROW COUNT QUERY
-    count_response = supabase_client.table("weather_raw").select("*", count="exact").execute()
+    # 1. OPTIMIZED TOTAL ROW COUNT QUERY 
+    # Only select 'date' column with count="exact" to save network bandwidth
+    count_response = supabase_client.table("weather_raw").select("date", count="exact").execute()
     total_rows = count_response.count if count_response.count is not None else len(count_response.data)
     
     # 2. Earliest and Latest Dates Check
@@ -211,7 +214,7 @@ def verify_database_data(supabase_client: Client):
 
 
 
-
+# MAIN EXECUTION
 if __name__ == "__main__":
     TARGET_LAT = 34.0522 
     TARGET_LON = -118.2437

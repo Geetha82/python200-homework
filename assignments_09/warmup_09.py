@@ -2,32 +2,34 @@
 
 import os
 import datetime
+from datetime import date, timedelta
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
 # --- Supabase Connection ---
-
+# Connection Question 1
 # =====================================================================
 # Q1: What are the two pieces of information supabase-py needs to connect 
 #     to your project? Where do you find them in the Supabase dashboard, 
 #     and why should they never be hardcoded in a Python script?
 #
-# A1: 1. Project URL: The REST API endpoint used to route requests to your 
-#        specific database instance.
-#     2. Anon Public API Key: The client-side API key that authenticates 
-#        your requests through Supabase's API gateway.
-#
-#     Where to find them: In the Supabase Dashboard, navigate to 
-#     Project Settings -> API. Both the Project URL and the anon public 
-#     key are listed under the "Project API keys" and "URL" sections.
-#
-#     Why they should never be hardcoded: Hardcoding credentials risks 
-#     leaking them if the code is pushed to a public repository (like GitHub). 
-#     Using environment variables (.env files) keeps configuration separate 
-#     from source code, allowing safe collaboration and easier deployments 
-#     across different environments (development, staging, production).
-# =====================================================================
+#A1: 
+#     1. The Two Pieces of Information:
+#        - Project URL: The unique API URL endpoint for your hosted database instance.
+#        - Anon Public Key: The client API key allowing public access to your database.
+# 
+#     2. Where to find them in the Supabase Dashboard:
+#        - Go to Project Settings -> API (found under the gear icon in the sidebar).
+#        - Under "Project API keys", copy the 'anon' (public) key.
+#        - Under "Project URL", copy the 'URL'.
+# 
+#     3. Why they should never be hardcoded:
+#        - Hardcoding keys compromises security, exposing access if your code is pushed 
+#          to public repositories like GitHub. 
+#        - Hardcoding limits configuration management, making it difficult to swap 
+#          between environments (e.g., development, testing, production) without altering code.
 
+# --- Connection Question 2 ---
 def get_client() -> Client:
 
     # Loads Supabase credentials from environment variables and returns a Client.
@@ -45,7 +47,7 @@ def get_client() -> Client:
         
     return create_client(url, key)
 
-
+# --- Connection Question 3 ---
 # =====================================================================
 # Q3: What is Row Level Security (RLS), and why did you disable it on 
 #     your tables for this course? In what kind of real-world application 
@@ -71,6 +73,8 @@ def get_client() -> Client:
 
 # --- supabase-py CRUD ---
 
+# --- CRUD Question 1 ---
+
 def insert_test_record(supabase: Client):
     
     # Inserts a single test row into weather_raw using today's date and a literal .insert() call.
@@ -88,25 +92,31 @@ def insert_test_record(supabase: Client):
     
     print(f"Executing standard literal insert for test record date {today_str}...")
     
-    # Standard insert call to show standard database constraints
-    response = supabase.table("weather_raw").insert(test_record).execute()
-    print("Successfully inserted test row!")
-    return response
+    # Use the supabase-py SDK fluent API to insert the row
+    response = (
+        supabase.table("weather_raw")
+        .insert(test_record)
+        .execute()
+    )
+    
+    return response.data
 
-
+# CRUD Question 1 Comment
 # =====================================================================
-# Q1 CONCEPTUAL FOLLOW-UP
-#
-# What would happen if you ran the function twice?
-# If you run this function twice on the same day with a standard .insert(), 
-# the second execution will crash and throw a unique constraint primary 
-# key violation error because that date already exists in the table.
-#
-# How would you change the call to make it safe to run multiple times?
-# To make it safe and idempotent, use the `.upsert()` method call and 
-# provide the conflict target `on_conflict="date"` like this:
-# supabase.table("weather_raw").upsert(test_record, on_conflict="date").execute()
-# =====================================================================
+# Q: What would happen if you ran the function twice? How would you change the call 
+#    to make it safe to run multiple times?
+# 
+# A: 
+#     1. What happens if run twice:
+#        - The script crashes with a '23505' PostgreSQL exception: duplicate key value 
+#          violates unique constraint "weather_raw_pkey". The literal `.insert()` command 
+#          will only work if the primary key (date) does not already exist in the table.
+# 
+#     2. How to make it safe to run multiple times (Idempotency):
+#        - Swap the `.insert()` method out for the `.upsert()` method.
+#        - Configure it with the parameter `on_conflict="date"`. This tells the database 
+#          to overwrite (update) the metrics if the date already exists instead of throwing 
+#          an unhandled exception.
 
 
 def get_records_by_date_range(supabase: Client, start: str, end: str) -> list[dict]:
@@ -187,74 +197,34 @@ def safe_upsert(supabase: Client, records: list[dict]) -> list[dict]:
 # =====================================================================
 
 
-# --- Script Execution Routine ---
+# MAIN EXECUTION BLOCK
 if __name__ == "__main__":
-    print("--- Running Reviewer-Aligned SDK Warmup Checks ---")
+    print("--- Starting Week 9 Warmup Script ---")
     try:
-        # 1. Initialize connection
-        client = get_client()
-        print("Successfully generated a valid Supabase client!")
+        # 1. Connect securely
+        supabase_client = get_client()
+        print("Success: Supabase client initialized securely!\n")
         
-        # 2. RUNNABLE CRUD Q1 TEST: Separate Success from Duplicate Crash
-        print("\n--- Testing Q1: Literal Insert Behavior ---")
-        
-        # We calculate yesterday's date string dynamically to guarantee a fresh record target
-        yesterday_str = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
-        
-        test_record_payload = {
-            "date": yesterday_str,
-            "temperature_2m_max": 24.5,
-            "temperature_2m_min": 12.2,
-            "precipitation_sum": 0.0,
-            "wind_speed_10m_max": 14.3
-        }
-        
-        # A. Demonstrate FIRST run (Successful confirmation)
-        print(f" Executing Run #1: Inserting a fresh record for {yesterday_str}...")
-        success_res = client.table("weather_raw").insert(test_record_payload).execute()
-        print(f"Run #1 SUCCESS: Record safely created. (Returned: {success_res.data[0]['date']})")
-        
-        # B. Demonstrate SECOND run (Duplicate confirmation)
-        print(f"👉 Executing Run #2: Attempting to insert identical date {yesterday_str} again...")
+        # # >>> CHANGED HERE <<<
+        # 2. Insert test record calling insert_test_record() directly with try/except to absorb duplicate key crashes safely
         try:
-            client.table("weather_raw").insert(test_record_payload).execute()
-        except Exception as duplicate_error:
-            print(f"Run #2 EXPECTED FAILURE: The primary key constraint successfully caught the duplicate!")
-            print(f"   Error Message: {duplicate_error}\n")
+            inserted_data = insert_test_record(supabase_client) # Calling your formal function directly now
+            print("Success! Operation response payload:")
+            print(inserted_data, "\n")
+        except Exception as insert_err:
+            print(f"Notice: insert_test_record() skipped/halted as expected (duplicate key row for today already exists): {insert_err}\n")
         
-        # 3. RUNNABLE CRUD Q2 TEST & PRINTOUT:
-        print(f"Executing Q2 Range Query Test bounding yesterday's record ({yesterday_str})...")
-        matching_rows = get_records_by_date_range(client, start=yesterday_str, end=yesterday_str)
+        # 3. Test Range Selection covering the target record (CRUD Q2)
+        today = date.today()
+        start_date = (today - timedelta(days=1)).isoformat()
+        end_date = (today + timedelta(days=1)).isoformat()
         
-        print(f"Found {len(matching_rows)} matching records from range request:")
-        for row in matching_rows:
+        print(f"Querying database records from range: {start_date} to {end_date}...")
+        records = get_records_by_date_range(supabase_client, start_date, end_date)
+        
+        print(f"Success! Retrieved {len(records)} record(s):")
+        for row in records:
             print(row)
-        print("-" * 60)
-        
-        # 4. RUNNABLE CRUD Q3 BATCH SAFE UPSERT TEST:
-        print("\n Executing Q3 safe_upsert batch operation test...")
-        today_str = datetime.date.today().isoformat()
-        tomorrow_str = (datetime.date.today() + datetime.timedelta(days=1)).isoformat()
-        
-        batch_payload = [
-            {
-                "date": yesterday_str,  # Updates the row we created in step 2A safely
-                "temperature_2m_max": 28.0,
-                "temperature_2m_min": 14.0,
-                "precipitation_sum": 0.5,
-                "wind_speed_10m_max": 11.2
-            },
-            {
-                "date": tomorrow_str,   # Completely new target date
-                "temperature_2m_max": 22.0,
-                "temperature_2m_min": 10.5,
-                "precipitation_sum": 0.0,
-                "wind_speed_10m_max": 8.4
-            }
-        ]
-        
-        upserted_rows = safe_upsert(client, batch_payload)
-        print("\nWarmup script validation suite fully processed successfully!")
             
-    except Exception as e:
-        print(f" Warmup execution halted prematurely due to unhandled error: {e}")
+    except Exception as err:
+        print(f"\nDatabase/Runtime Error: {err}")
