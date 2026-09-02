@@ -1,5 +1,5 @@
-# Video link -  https://youtu.be/0oJAR84fEMM
 
+# Video link -  https://youtu.be/0oJAR84fEMM
 
 import os
 import requests
@@ -54,42 +54,6 @@ def extract_historical_weather(lat: float, lon: float, start_date: str, end_date
     
     return payload
 
-# STEP 2 & 3: TRANSFORM + LOAD
-def load_records_to_cloud(raw_api_data: dict):
-    
-    # Step 2 & 3: Transform + Load
-    # Converts the API response from columnar arrays into a list of row dictionaries
-    # and loads them idempotently into Supabase database.
-    
-    daily = raw_api_data.get("daily", {})
-    dates = daily.get("time", [])
-    max_temps = daily.get("temperature_2m_max", [])
-    min_temps = daily.get("temperature_2m_min", [])
-    precip = daily.get("precipitation_sum", [])
-    wind_speeds = daily.get("wind_speed_10m_max", [])
-    
-    # --- STEP 2: TRANSFORMATION ---
-    records = []
-    for i in range(len(dates)):
-        records.append({
-            "date": dates[i],
-            "temperature_2m_max": max_temps[i],
-            "temperature_2m_min": min_temps[i],
-            "precipitation_sum": precip[i],
-            "wind_speed_10m_max": wind_speeds[i]
-        })
-    
-    print("--- Step 2: Transform Verification ---")
-    if records:
-        print(f"First Record (Index 0):\n{records[0]}")
-        print(f"\nLast Record (Index {len(records)-1}):\n{records[-1]}")
-    print("--------------------------------------\n")
-    
-    # --- STEP 3: LOADING (UPSERT) ---
-    print(f" Loading {len(records)} records into Supabase 'weather_raw'...")
-    response = supabase.table("weather_raw").upsert(records, on_conflict="date").execute()
-    print(f"Confirmation: Number of rows successfully upserted into the database: {len(response.data)}")   
-
 # =====================================================================
 # STEP 2 REFLECTION: RECORD COUNT DISCREPANCY ANALYSIS
 #
@@ -112,6 +76,65 @@ def load_records_to_cloud(raw_api_data: dict):
 #      for maintenance, an API might skip days or return null gaps, causing 
 #      the final record output to fall short of the expected 365 days.
 # =====================================================================
+
+# STEP 2 & 3: TRANSFORM + LOAD
+def load_records_to_cloud(raw_api_data: dict):
+
+    # Converts the API response from columnar arrays into a list of row dictionaries
+    # and loads them idempotently into Supabase database.
+    
+    daily = raw_api_data.get("daily", {})
+    dates = daily.get("time", [])
+    max_temps = daily.get("temperature_2m_max", [])
+    min_temps = daily.get("temperature_2m_min", [])
+    precip = daily.get("precipitation_sum", [])
+    wind_speeds = daily.get("wind_speed_10m_max", [])
+    
+    # --- STEP 2: TRANSFORMATION ---
+    records = []
+    for i in range(len(dates)):
+        records.append({
+            "date": dates[i],
+            "temperature_2m_max": max_temps[i],
+            "temperature_2m_min": min_temps[i],
+            "precipitation_sum": precip[i],
+            "wind_speed_10m_max": wind_speeds[i]
+        })
+
+    print("--- Step 2: Transform Verification ---")
+    if records:
+        print(f"First Record (Index 0):\n{records[0]}")
+        print(f"\nLast Record (Index {len(records)-1}):\n{records[-1]}")
+    print("--------------------------------------\n")
+    
+    # --- STEP 3: LOADING (UPSERT WITH LIVE BEFORE/AFTER TRACKING) ---
+    
+    # 1. Fetch exact total row count BEFORE the pipeline runs
+    count_before_res = supabase.table("weather_raw").select("date", count="exact").execute()
+    count_before = count_before_res.count if count_before_res.count is not None else 0
+    
+    print(f"Loading {len(records)} records into Supabase 'weather_raw'...")
+    response = supabase.table("weather_raw").upsert(records, on_conflict="date").execute()
+    
+    # 2. Fetch exact total row count AFTER the pipeline runs
+    count_after_res = supabase.table("weather_raw").select("date", count="exact").execute()
+    count_after = count_after_res.count if count_after_res.count is not None else 0
+    
+    # 3. Explicitly report the metrics back to the terminal output console
+    print("\n--- Step 3: Load & Idempotency Verification Check ---")
+    print(f"Total row count in database BEFORE this pipeline execution: {count_before}")
+    print(f"Total row count in database AFTER this pipeline execution:  {count_after}")
+    print(f"Confirmation: Number of rows processed and returned by response.data: {len(response.data)}")
+    
+    if count_before > 0:
+        if count_before == count_after:
+            print("SUCCESSFUL IDEMPOTENCY DEMONSTRATION: Row count did not change.")
+        else:
+            print("WARNING: Row count shifted. Duplicate entries may have been created.")
+    else:
+        print("Initial data load completed. Run this script a second time to demonstrate stable idempotency.")
+    print("----------------------------------------------------\n")
+
 
 # =====================================================================
 # STEP 3 REFLECTION: IDEMPOTENCY CONFIRMATION

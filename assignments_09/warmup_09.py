@@ -196,8 +196,12 @@ if __name__ == "__main__":
     print("Success: Supabase client initialized securely!\n")
       
     # 2. Insert test record calling insert_test_record() 
-    inserted_data = insert_test_record(supabase_client)
-    print("\nScript wrapper received payload data successfully.")    
+    try:
+        inserted_data = insert_test_record(supabase_client)
+        print("\nScript wrapper received payload data successfully.")
+    except Exception as insert_error:
+        print(f"\n[Expected behavior demonstrated]: Function crashed on duplicate run as predicted.")
+        print(f"Error payload details: {insert_error}\n")  
 
     # 3. Test Range Selection
     today = date.today()
