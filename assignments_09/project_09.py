@@ -90,30 +90,6 @@ def load_records_to_cloud(raw_api_data: dict):
     response = supabase.table("weather_raw").upsert(records, on_conflict="date").execute()
     print(f"Confirmation: Number of rows successfully upserted into the database: {len(response.data)}")   
 
-    # --- AUTOMATED CODE-DRIVEN SECOND RUN & IDEMPOTENCY TEST ---
-    print("\n Running Automated Idempotency Verification Test...")
-    
-    # 1. Fetch exact database count immediately after the initial load
-    count_before = supabase.table("weather_raw").select("*", count="exact").execute().count
-    print(f"Row count in cloud database after initial load: {count_before}")
-    
-    # 2. Trigger an immediate second batch upsert with the exact same data payload
-    print("Triggering immediate second pipeline run with identical payload...")
-    supabase.table("weather_raw").upsert(records, on_conflict="date").execute()
-    
-    # 3. Fetch the final exact database count after the second run completes
-    count_after = supabase.table("weather_raw").select("*", count="exact").execute().count
-    print(f" Row count in cloud database after second load:  {count_after}")
-    
-    # 4. Programmatically compare and assert that the row count did not alter or grow
-    print("\nCODE-BASED IDEMPOTENCY VALIDATION:")
-    if count_before == count_after:
-        print(f"SUCCESS: Row counts are IDENTICAL ({count_before} == {count_after}).")
-        print("This explicitly proves in code that duplicate entries were prevented.")
-    else:
-        print(f"ERROR: Row counts drifted! Duplicates were created ({count_before} != {count_after}).")
-    print("-" * 70)
-
 # =====================================================================
 # STEP 2 REFLECTION: RECORD COUNT DISCREPANCY ANALYSIS
 #
@@ -158,14 +134,13 @@ def load_records_to_cloud(raw_api_data: dict):
     
 # Step 4: Verify
 def verify_database_data(supabase_client: Client):
-    """
-    Runs a series of database queries to check and verify that our weather data 
-    was loaded completely and accurately.
-    """
-    print("\nStep 4: Running Boundary Verification Queries...")
+    
+    # Runs a series of database queries to check and verify that our weather data was loaded completely and accurately.
+    print("\n" + "="*80)
+    print("               RUNNING REQUIRED STEP 4 VERIFICATION STAGE              ")
+    print("="*80)
     
     # 1. OPTIMIZED TOTAL ROW COUNT QUERY 
-    # Only select 'date' column with count="exact" to save network bandwidth
     count_response = supabase_client.table("weather_raw").select("date", count="exact").execute()
     total_rows = count_response.count if count_response.count is not None else len(count_response.data)
     

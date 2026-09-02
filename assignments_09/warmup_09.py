@@ -7,7 +7,8 @@ from dotenv import load_dotenv
 from supabase import create_client, Client
 
 # --- Supabase Connection ---
-# Connection Question 1
+
+# --- Q1 ---
 # =====================================================================
 # Q1: What are the two pieces of information supabase-py needs to connect 
 #     to your project? Where do you find them in the Supabase dashboard, 
@@ -29,7 +30,7 @@ from supabase import create_client, Client
 #        - Hardcoding limits configuration management, making it difficult to swap 
 #          between environments (e.g., development, testing, production) without altering code.
 
-# --- Connection Question 2 ---
+# --- Q2 ---
 def get_client() -> Client:
 
     # Loads Supabase credentials from environment variables and returns a Client.
@@ -47,7 +48,7 @@ def get_client() -> Client:
         
     return create_client(url, key)
 
-# --- Connection Question 3 ---
+# ---Q3 ---
 # =====================================================================
 # Q3: What is Row Level Security (RLS), and why did you disable it on 
 #     your tables for this course? In what kind of real-world application 
@@ -73,7 +74,7 @@ def get_client() -> Client:
 
 # --- supabase-py CRUD ---
 
-# --- CRUD Question 1 ---
+# --- CRUD Q1 ---
 
 def insert_test_record(supabase: Client):
     
@@ -101,28 +102,24 @@ def insert_test_record(supabase: Client):
     
     return response.data
 
-# CRUD Question 1 Comment
-# =====================================================================
-# Q: What would happen if you ran the function twice? How would you change the call 
-#    to make it safe to run multiple times?
-# 
-# A: 
-#     1. What happens if run twice:
-#        - The script crashes with a '23505' PostgreSQL exception: duplicate key value 
-#          violates unique constraint "weather_raw_pkey". The literal `.insert()` command 
-#          will only work if the primary key (date) does not already exist in the table.
-# 
-#     2. How to make it safe to run multiple times (Idempotency):
-#        - Swap the `.insert()` method out for the `.upsert()` method.
-#        - Configure it with the parameter `on_conflict="date"`. This tells the database 
-#          to overwrite (update) the metrics if the date already exists instead of throwing 
-#          an unhandled exception.
+# --- CRUD Q1 Comment ---
+# Q: What would happen if you ran the function twice? How would you change the call
+# to make it safe to run multiple times?
+#
+# A:
+# 1. What happens if run twice:
+#    - The script crashes with a PostgreSQL duplicate key error (code 23505). 
+#      The standard .insert() call fails if the primary key (date) already exists.
+#
+# 2. How to make it safe to run multiple times:
+#    - Change .insert() to .upsert(test_record, on_conflict="date"). This will 
+#      overwrite or update the row instead of throwing an error.
 
 
+# --- CRUD Q2 ---
 def get_records_by_date_range(supabase: Client, start: str, end: str) -> list[dict]:
     
     # Retrieves all rows from weather_raw where date >= start and date <= end.
-    # Returns a list of dictionaries, where each dictionary represents a row.
     response = supabase.table("weather_raw") \
                        .select("*") \
                        .gte("date", start) \
@@ -131,30 +128,23 @@ def get_records_by_date_range(supabase: Client, start: str, end: str) -> list[di
     
     return response.data
 
+# --- CRUD Q3 ---
+# Q3: Explain the difference between insert and upsert in supabase-py.
+# Give a concrete example of when you would choose each.
+#
+# A3:
+# 1. Difference:
+#    - INSERT strictly adds new records and throws a hard error on any duplicate keys.
+#    - UPSERT (Update/Insert) inserts if the key is new, or updates the existing row if it matches.
+#
+# 2. Example for INSERT:
+#    - Bank transaction ledgers or order invoice logs where duplicate entries must 
+#      fail immediately to prevent double-charging or fraud.
+#
+# 3. Example for UPSERT:
+#    - Daily automated weather scraping pipelines where re-running the script should 
+#      gracefully refresh data for that day without breaking.
 
-# =====================================================================
-# Q3: Explain the difference between insert and upsert in supabase-py. 
-#     Give a concrete example of when you would choose each.
-#
-# A3: 
-#     1. INSERT: Adds completely new rows to a table. If any row contains 
-#        a primary key or unique constraint value that already exists in 
-#        the database, the entire query fails and throws an error.
-#     2. UPSERT (Update or Insert): Safely checks if a record exists based 
-#        on a specific conflict key (like 'date'). If the key doesn't 
-#        exist, it performs an insert. If the key already exists, it 
-#        overwrites/updates that existing row's metrics with the new data.
-#
-#     Concrete Examples:
-#     - Choose INSERT for an **E-commerce Order Transaction log**. Every 
-#       purchased item needs a new, unique row ID. If an order ID is duplicated, 
-#       you want the script to crash immediately so you can catch a fraud 
-#       or billing glitch before charging a customer twice.
-#     - Choose UPSERT for an **Automated Weather Pipeline** (like this course). 
-#       If you re-run a pipeline to scrape weather stats for January 1st, you 
-#       do not want the script to fail. You want it to seamlessly update the 
-#       metrics for January 1st if they changed, or safely leave them alone.
-# =====================================================================
 
 def safe_upsert(supabase: Client, records: list[dict]) -> list[dict]:
     
@@ -176,7 +166,7 @@ def safe_upsert(supabase: Client, records: list[dict]) -> list[dict]:
 
 # --- Idempotency ---
 
-# =====================================================================
+# --- Idempotency Q1 ---
 # Q1: What does "Idempotency" mean, and why does it matter for a data 
 #     pipeline? Give one concrete example of what goes wrong in a 
 #     non-idempotent pipeline when the script crashes halfway through 
@@ -200,31 +190,26 @@ def safe_upsert(supabase: Client, records: list[dict]) -> list[dict]:
 # MAIN EXECUTION BLOCK
 if __name__ == "__main__":
     print("--- Starting Week 9 Warmup Script ---")
-    try:
-        # 1. Connect securely
-        supabase_client = get_client()
-        print("Success: Supabase client initialized securely!\n")
+  
+    # 1. Connect securely
+    supabase_client = get_client()
+    print("Success: Supabase client initialized securely!\n")
+      
+    # 2. Insert test record calling insert_test_record() 
+    inserted_data = insert_test_record(supabase_client)
+    print("Success! Operation response payload:")
+    print(inserted_data, "\n")        
+
+    # 3. Test Range Selection
+    today = date.today()
+    start_date = (today - timedelta(days=1)).isoformat()
+    end_date = (today + timedelta(days=1)).isoformat()
         
-        # # >>> CHANGED HERE <<<
-        # 2. Insert test record calling insert_test_record() directly with try/except to absorb duplicate key crashes safely
-        try:
-            inserted_data = insert_test_record(supabase_client) # Calling your formal function directly now
-            print("Success! Operation response payload:")
-            print(inserted_data, "\n")
-        except Exception as insert_err:
-            print(f"Notice: insert_test_record() skipped/halted as expected (duplicate key row for today already exists): {insert_err}\n")
+    print(f"Querying database records from range: {start_date} to {end_date}...")
+    records = get_records_by_date_range(supabase_client, start_date, end_date)
         
-        # 3. Test Range Selection covering the target record (CRUD Q2)
-        today = date.today()
-        start_date = (today - timedelta(days=1)).isoformat()
-        end_date = (today + timedelta(days=1)).isoformat()
-        
-        print(f"Querying database records from range: {start_date} to {end_date}...")
-        records = get_records_by_date_range(supabase_client, start_date, end_date)
-        
-        print(f"Success! Retrieved {len(records)} record(s):")
-        for row in records:
+    print(f"Success! Retrieved {len(records)} record(s):")
+    for row in records:
             print(row)
             
-    except Exception as err:
-        print(f"\nDatabase/Runtime Error: {err}")
+
