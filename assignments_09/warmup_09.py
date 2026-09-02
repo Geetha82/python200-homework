@@ -99,7 +99,7 @@ def insert_test_record(supabase: Client):
         .insert(test_record)
         .execute()
     )
-    
+    print(f"SUCCESSFUL FUNCTION EXERCISE - Row data returned from Supabase:\n{response.data}")
     return response.data
 
 # --- CRUD Q1 Comment ---
@@ -197,8 +197,7 @@ if __name__ == "__main__":
       
     # 2. Insert test record calling insert_test_record() 
     inserted_data = insert_test_record(supabase_client)
-    print("Success! Operation response payload:")
-    print(inserted_data, "\n")        
+    print("\nScript wrapper received payload data successfully.")    
 
     # 3. Test Range Selection
     today = date.today()
@@ -210,6 +209,6 @@ if __name__ == "__main__":
         
     print(f"Success! Retrieved {len(records)} record(s):")
     for row in records:
-            print(row)
+        print(row)
             
 
