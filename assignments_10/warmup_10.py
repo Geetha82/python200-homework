@@ -40,16 +40,18 @@
 
 # Prompt Design
 
-# Prompt Question 1: 
+# Prompt Question 1
+# ------------------------------------------------------------------------------
+# General Logic Shift Change: 
+# To accommodate an alternative output format, the pipeline's verification boundaries must 
+# shift from checking a strict binary threshold to a structural rule evaluation. The validation 
+# layer must be updated to change its parsing count constraint from a single delimiter check 
+# to a multi-sentence boundary count. Instead of checking for an exact one-sentence response, 
+# the pipeline must dynamically evaluate if the generated text block contains exactly two structural 
+# boundaries. If a violation is caught during processing, the defensive fallback logic must shift 
+# from trimming a single phrase to cleanly isolating the first two complete text statements, ensuring 
+# the data satisfies database schema limits without dropping the primary evaluation or crashing on edge cases.
 
-# Alternative Prompt and Two-Sentence Validation Logic
-# Alternative Prompt: "Write exactly two sentences recommending whether to go for 
-# a run today. The first sentence must state the prediction. The second sentence 
-# must explain the specific weather reasoning behind it."
-#
-# Logic Change: Change the validation check length check to `len(sentences) != 2`. 
-# If it fails, fix the string by slicing just the first two sentences: 
-# `recommendation = ". ".join(sentences[:2]) + "."`.
 # ------------------------------------------------------------------------------
 
 # Prompt Question 2

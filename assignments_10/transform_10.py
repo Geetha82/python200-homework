@@ -128,15 +128,15 @@ Strict Constraints:
             
             if response is not None:
                 recommendation = response.choices[0].message.content.strip()
-                sentences = [s for s in recommendation.split('.') if s.strip()]
+                sentences = [s.strip() for s in recommendation.split('.') if s.strip()]
                 if len(sentences) > 1:
-                    recommendation = sentences.strip() + "."
+                    recommendation = ". ".join(sentences[:1]) + "."
+
             else:
                 print(f"API Error on date {record['date']}. Injecting generic fallback recommendation.")
                 fallback_status = "favorable" if record["good_for_running"] == 1 else "unfavorable"
                 recommendation = f"Weather conditions appear {fallback_status} for running based on algorithmic metrics."
 
-            # 🎯 FIXED PAYLOAD: Strictly writing the four required core enrichment fields
             payloads.append({
                 "date": record["date"],
                 "good_for_running": record["good_for_running"],
@@ -186,33 +186,52 @@ Strict Constraints:
 #
 # * Particularly Good Summary Example (Sample #1 - 2026-09-02):
 #   - Text: "It is an excellent day for a run with favorable temperatures and no precipitation."
-#   - Why: The ML classifier had a high confidence score of 0.9994. The LLM successfully 
-#     picked up on this certainty and correctly avoided any tone hedging.
+#   - Critique: This summary is strong because the machine learning model had an extremely high 
+#     certainty score of 0.9994. The LLM accurately recognized this context, skipped conversational 
+#     fluff, and matched the high confidence with definitive, action-oriented encouragement.
 #
 # * Weaker Summary Example (Sample #2 - 2023-01-01):
 #   - Text: "Avoid running today due to extremely unfavorable weather conditions."
-#   - Why: While accurate, the sentence is far too generic and fails to explain *why* it is unfavorable.
-#   - Cause: A low model temperature setting (0.3) combined with a strict one-sentence constraint 
-#     forces gpt-4o-mini to write wide generalizations instead of parsing descriptive traits.
+#   - Critique: While this output is factually accurate, it represents a weaker recommendation 
+#     because it fails to describe which specific features caused the issue. The low model 
+#     temperature setting (0.3) mixed with strict sentence length limits forced gpt-4o-mini to save 
+#     token space by choosing broad generalizations over concrete variables like rain or wind.
 # ==============================================================================
 
 
 # ==============================================================================
-# STEP 6: CONCEPTUAL REFLECTION BLOCK (STREAMLINED & CLEAN)
+# STEP 6: CONCEPTUAL REFLECTION BLOCK 
 # ==============================================================================
-# 1. Geographic Generalization: No, the classifier will likely become inaccurate. It was 
-#    trained specifically on Charlotte, NC climate data, so running it on a city with 
-#    a radically different environment represents 'data drift' where input thresholds 
-#    fall completely outside what the model learned during training.
-#
-# 2. LLM Capabilities & Constraints: The LLM has no ability to override the classifier; 
-#    it is purely additive. Because the script feeds the classifier's choice directly into 
-#    the prompt as truth, a faulty ML prediction means the LLM will simply write anarticulate, 
-#    convincing justification defending that incorrect decision.
+# 1.Geographic Generalization and Climate Drift:If the pipeline processes data from a city with a completely different 
+#   climatethan Charlotte, NC, the classifier’s predictions will likely be highly inaccurate.
+#   Traditional machine learning models are fundamentally bound to the statisticaldistributions of their training datasets. 
+#   Because your Week 4 model was trainedon Charlotte's specific environmental 
+#   thresholds—such as its baseline humidity,moderate wind spikes, and seasonal
+#   temperature swings—it will not generalize wellto a dry desert like Phoenix or a 
+#   sub-zero winter environment like Minneapolis.Feeding data from a radically 
+#   different geography into this model represents aclassic 'data drift' failure,
+#   where the mathematical boundaries established duringtraining no longer apply 
+#   to the incoming production features.
 # 
-# 3. Scaling Bottlenecks: The main concerns would be high cloud API transactional costs andnetwork 
-#    latency from making 50,000 individual calls. This would be addressed by usingOpenAI's asynchronous 
-#    Batch API for a 50% discount or hosting a local open-source model.
+# 2.LLM Capabilities, Constraints, and Overrides:The LLM functions strictly as a downstream additive 
+#   translation layer and has zeroarchitectural mechanism to 'override' the classifier's primary 
+#   binary prediction.Because the pipeline code feeds the classifier's outcome (0 or 1) directly into 
+#   thesystem prompt as ground-truth context, the LLM is logically trapped and forced togenerate text 
+#   that justifies that specific classification. This architecture carriesa significant risk of creating a 
+#   'hallucination wrapper' or a 'convincing lie.'If the machine learning model makes a major prediction error, 
+#   the downstream LLMwill articulately write a highly believable, human-sounding sentence defending thatfaulty decision,
+#   masking serious bugs in the pipeline from the end-user.
+# 
+# 3.Scaling Bottlenecks to 50,000 Records:If this ETL data pipeline were scaled up to 50,000 records, 
+#   the primary engineeringconcerns would split between network latency and API transactional costs.
+#   While your scikit-learn classifier can complete 50,000 numeric calculations 
+#   locallyin a fraction of a second for essentially zero cost, making 50,000 individual,
+#   sequential network API requests to OpenAI would take hours to execute and result inmassive usage bills. 
+#   To remediate this issue in a production data warehouse, 
+#   I wouldreplace the sequential loop with OpenAI's asynchronous Batch API, which 
+#   processeslarge-scale background data tasks with a 50% discount.     
+#   Alternatively, for completedata isolation and zero external costs,
+#   I would swap out the proprietary API callfor a small, open-source model (like a quantized Llama model) hosted locally rightalongside the Supabase infrastructure.
 # ==============================================================================
 
 if __name__ == "__main__":
