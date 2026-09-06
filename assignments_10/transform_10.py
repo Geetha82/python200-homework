@@ -1,3 +1,5 @@
+# Video link - https://youtu.be/ba0TdgF-BiA
+
 import os
 import json
 import time
@@ -179,59 +181,57 @@ Strict Constraints:
 
 
 # ==============================================================================
-# STEP 5: COMMENT SUMMARY REFLECTION (REAL DATA CRITIQUE)
-# ==============================================================================
-# Looking closely at our actual printed terminal sample rows, the LLM summaries 
-# successfully and accurately reflect the underlying weather metrics and predictions.
+# STEP 5: MODEL COMPARISON & CRITIQUE
 #
-# * Particularly Good Summary Example (Sample #1 - 2026-09-02):
-#   - Text: "It is an excellent day for a run with favorable temperatures and no precipitation."
-#   - Critique: This summary is strong because the machine learning model had an extremely high 
-#     certainty score of 0.9994. The LLM accurately recognized this context, skipped conversational 
-#     fluff, and matched the high confidence with definitive, action-oriented encouragement.
+# Evaluation of LLM Summaries:
+# Overall, the LLM summaries accurately translate the binary predictions and confidence
+# metrics into clear human prose without breaking the schema. 
 #
-# * Weaker Summary Example (Sample #2 - 2023-01-01):
-#   - Text: "Avoid running today due to extremely unfavorable weather conditions."
-#   - Critique: While this output is factually accurate, it represents a weaker recommendation 
-#     because it fails to describe which specific features caused the issue. The low model 
-#     temperature setting (0.3) mixed with strict sentence length limits forced gpt-4o-mini to save 
-#     token space by choosing broad generalizations over concrete variables like rain or wind.
+# Strong Summary Example (2026-09-02):
+# The summary for 2026-09-02 is highly accurate because the ML model predicted 'True' 
+# with an exceptionally high confidence score of 0.9994. The LLM correctly identified 
+# this extreme certainty and generated a strong, definitive validation: "It is highly 
+# recommended to go for a run today given the favorable weather conditions."
+#
+# Weaker/Imperfect Summary Example (2023-01-03):
+# The summary for 2023-01-03 is weaker because the LLM focuses almost entirely on the 
+# pipeline's metadata rather than the underlying weather features. Instead of describing 
+# the actual temperature or wind conditions that caused a 'False' prediction, it explicitly 
+# narrates its own low confidence ("Given the extremely low confidence score..."). This 
+# likely happened because the prompt heavily prioritized the `confidence` variable (0.0067) 
+# over the raw weather feature strings, causing the LLM to meta-analyze the score instead 
+# of summarizing the physical environment.
 # ==============================================================================
 
 
 # ==============================================================================
-# STEP 6: CONCEPTUAL REFLECTION BLOCK 
-# ==============================================================================
-# 1.Geographic Generalization and Climate Drift:If the pipeline processes data from a city with a completely different 
-#   climatethan Charlotte, NC, the classifier’s predictions will likely be highly inaccurate.
-#   Traditional machine learning models are fundamentally bound to the statisticaldistributions of their training datasets. 
-#   Because your Week 4 model was trainedon Charlotte's specific environmental 
-#   thresholds—such as its baseline humidity,moderate wind spikes, and seasonal
-#   temperature swings—it will not generalize wellto a dry desert like Phoenix or a 
-#   sub-zero winter environment like Minneapolis.Feeding data from a radically 
-#   different geography into this model represents aclassic 'data drift' failure,
-#   where the mathematical boundaries established duringtraining no longer apply 
-#   to the incoming production features.
-# 
-# 2.LLM Capabilities, Constraints, and Overrides:The LLM functions strictly as a downstream additive 
-#   translation layer and has zeroarchitectural mechanism to 'override' the classifier's primary 
-#   binary prediction.Because the pipeline code feeds the classifier's outcome (0 or 1) directly into 
-#   thesystem prompt as ground-truth context, the LLM is logically trapped and forced togenerate text 
-#   that justifies that specific classification. This architecture carriesa significant risk of creating a 
-#   'hallucination wrapper' or a 'convincing lie.'If the machine learning model makes a major prediction error, 
-#   the downstream LLMwill articulately write a highly believable, human-sounding sentence defending thatfaulty decision,
-#   masking serious bugs in the pipeline from the end-user.
-# 
-# 3.Scaling Bottlenecks to 50,000 Records:If this ETL data pipeline were scaled up to 50,000 records, 
-#   the primary engineeringconcerns would split between network latency and API transactional costs.
-#   While your scikit-learn classifier can complete 50,000 numeric calculations 
-#   locallyin a fraction of a second for essentially zero cost, making 50,000 individual,
-#   sequential network API requests to OpenAI would take hours to execute and result inmassive usage bills. 
-#   To remediate this issue in a production data warehouse, 
-#   I wouldreplace the sequential loop with OpenAI's asynchronous Batch API, which 
-#   processeslarge-scale background data tasks with a 50% discount.     
-#   Alternatively, for completedata isolation and zero external costs,
-#   I would swap out the proprietary API callfor a small, open-source model (like a quantized Llama model) hosted locally rightalongside the Supabase infrastructure.
+# STEP 6: PIPELINE REFLECTION
+#
+# Training Data vs. New Geographies:
+# Because the scikit-learn classifier was trained exclusively on historical data from 
+# Charlotte, NC, its predictions will likely degrade in accuracy if fed weather data 
+# from a fundamentally different climate zone. Machine learning models assume that the 
+# training distribution mirrors the production distribution; if the new city experiences 
+# extreme baselines—such as desert heat or high-altitude cold—the feature weights optimized 
+# for Charlotte's mild climate will misclassify conditions.
+#
+# LLM Override Capabilities & Pipeline Implications:
+# In this architecture, the LLM acts as a purely additive layer and possesses zero 
+# authority to 'override' the core classifier's binary decision. It is explicitly fed 
+# the `good_for_running` classification as an immutable truth constraint in its prompt, 
+# meaning it cannot modify the 'True' or 'False' schema field stored in Supabase. The major 
+# implication here is that if the upstream ML model makes a faulty prediction, the LLM 
+# is forced to defensively rationalize that error in prose, potentially creating misleading 
+# descriptions to justify an incorrect classification.
+#
+# Scaling Concerns (50,000 Records):
+# Scaling this pipeline from 366 records to 50,000 records makes API latency and compounding 
+# financial costs my primary engineering concerns. While the scikit-learn classifier evaluates 
+# 50,000 rows locally in milliseconds, making 50,000 sequential chat completion requests 
+# to OpenAI would take hours to complete and incur substantial token expenses. To address 
+# these bottlenecks, I would refactor the LLM transform layer to use asynchronous batch API 
+# requests (processing records concurrently) and implement a caching layer to completely skip 
+# LLM generation for identical weather profiles.
 # ==============================================================================
 
 if __name__ == "__main__":
