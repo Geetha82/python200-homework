@@ -1,26 +1,52 @@
 
-# ML vs. LLM in Pipelines
+# ==============================================================================
+# ML/LLM QUESTION 1: ROLE SWAPPING & MODEL CAPABILITIES
+# ==============================================================================
+# * Why the Classifier owns Binary Prediction:
+#   The scikit-learn ML classifier is mathematically optimized for binary classification. 
+#   By calculating a precise decision boundary across numerical data, it isolates tabular 
+#   patterns to output a strict, deterministic matrix ([0] or) alongside an exact 
+#   mathematical confidence score (via predict_proba) instantly and at near-zero cost.
+#
+# * Why the LLM owns Natural-Language Recommendations:
+#   The LLM possesses deep semantic fluidness and structural linguistic comprehension. 
+#   It excels at translating multiple context features into human prose, allowing it to 
+#   synthesize both raw metrics and numerical model confidence into fluid, context-aware 
+#   narrative summaries that traditional tabular models cannot construct.
+#
+# * What specifically breaks if swapped:
+#   - If the LLM handles Classification: Downstream engineering stability completely breaks. 
+#     LLMs are non-deterministic; a slight text variation or shift in phrasing (e.g., outputting 
+#     "Yes, run!" or "Favorable conditions" instead of an absolute integer 0 or 1) will 
+#     instantly violate strict database schemas and crash the automated ingestion pipeline. 
+#     It also introduces extreme API latency and unnecessary operational costs.
+#   - If the ML model handles Text Generation: The transform step fails entirely. Traditional 
+#     classification frameworks (like logistic regression or random forests) are mathematically 
+#     incapable of generating unstructured vocabulary or freeform strings, yielding zero text output.
 
-# ML/LLM Question 1
-
-# * Output Difference: The ML model outputs a strict number (0 or 1) and a confidence 
-#   score, while the LLM outputs a human-readable text sentence.
-# * Why they do it: The ML model uses math to look at numeric tables, while the LLM 
-#   understands language to write fluid, context-aware sentences.
-# * What goes wrong if swapped: If the LLM does the classification, it is slow, 
-#   expensive, and might output words like "Yeah, go run!" instead of a strict 0 or 1, 
-#   which breaks the database. If the ML model tries to write the text, it will 
-#   fail completely because standard ML pipelines cannot generate freeform prose.
-# ------------------------------------------------------------------------------
-
-
-# ML/LLM Question 2: Tool Selection for Specific Tasks
-
-# Task 1 (Date to Day-of-Week): Deterministic code because standard date math is free and flawless.
-# Task 2 (Job Posting Classification): LLM because unstructured text requires reading comprehension.
-# Task 3 (Predicting Customer Churn): Trained ML model because it maps tabular data to a clear outcome.
-# Task 4 (Normalizing City Names): LLM because it natively understands human typos and abbreviations.
-# Task 5 (Summing Revenue Figures): Deterministic code because math must be 100% precise.
+# ==============================================================================
+# ML/LLM QUESTION 2: TOOL SELECTION FOR SPECIFIC TASKS
+# ==============================================================================
+# * Task 1 (Date to Day-of-Week): Deterministic code. Standard datetime math handles 
+#   calendar logic with 100% precision, zero runtime latency, and zero compute costs.
+#
+# * Task 2 (Job Posting Classification): LLM. Unstructured, freeform job descriptions 
+#   require semantic text comprehension to distill nuance and intent into a thematic bucket.
+#
+# * Task 3 (Predicting Customer Churn): Trained ML model. It is designed to map historical, 
+#   tabular user behavior tables directly to a clear binary prediction with a measurable 
+#   confidence metric.
+#
+# * Task 4 (Normalizing City Names): Deterministic code (with an explicit caveat). If dealing 
+#   with a known, bounded set of operational regions, a fixed programmatic dictionary lookup 
+#   mapping variations ("NY", "NYC", "N.Y.C.") to a single string ("New York City") is preferred. 
+#   Deterministic mapping ensures absolute validation control and zero token cost. However, if the 
+#   input suffers from open-ended, highly ambiguous human typos or unstructured variations, 
+#   an LLM is justified because its semantic anchoring handles linguistic noise that regex fails to catch.
+#
+# * Task 5 (Summing Revenue Figures): Deterministic code. Financial calculations require absolute, 
+#   exact mathematical precision. LLMs can easily fail at basic arithmetic due to tokenization 
+#   biases, making native code the only safe choice.
 
 
 # ML/LLM Question 3
@@ -38,21 +64,38 @@
 #   sentences each time, making your historical database entries unstable.
 # ------------------------------------------------------------------------------
 
-# Prompt Design
-
-# Prompt Question 1
+# ==============================================================================
+# PROMPT DESIGN: QUESTION 1
+# ==============================================================================
+# Part 1: Alternative System Prompt
 # ------------------------------------------------------------------------------
-# General Logic Shift Change: 
-# To accommodate an alternative output format, the pipeline's verification boundaries must 
-# shift from checking a strict binary threshold to a structural rule evaluation. The validation 
-# layer must be updated to change its parsing count constraint from a single delimiter check 
-# to a multi-sentence boundary count. Instead of checking for an exact one-sentence response, 
-# the pipeline must dynamically evaluate if the generated text block contains exactly two structural 
-# boundaries. If a violation is caught during processing, the defensive fallback logic must shift 
-# from trimming a single phrase to cleanly isolating the first two complete text statements, ensuring 
-# the data satisfies database schema limits without dropping the primary evaluation or crashing on edge cases.
+ALTERNATIVE_SYSTEM_PROMPT = """
+You are a precise weather recommendation engine. Analyze the provided weather 
+data and the machine learning model's prediction. Generate a running 
+recommendation that is exactly two sentences long. The first sentence must 
+state whether conditions are favorable or unfavorable based on the data. The 
+second sentence must provide a brief explanation why, citing at least one 
+specific weather feature. Do not include any other text, introductory phrases, 
+or formatting.
+"""
 
+# Part 2: Validation Logic Shift Change
 # ------------------------------------------------------------------------------
+# To accommodate this alternative output format, the pipeline's verification boundaries 
+# must shift from checking a strict binary threshold to a structural rule evaluation. 
+# Specifically, the validation layer must be updated to change its parsing count constraint 
+# from a single delimiter check to a multi-sentence boundary count. Instead of checking 
+# for an exact one-sentence response, the code must split the LLM response string on sentence 
+# delimiters (like periods, exclamation points, or question marks) and verify that it 
+# contains exactly two structural segments. 
+#
+# If a violation is caught during processing (e.g., the LLM returns three sentences), 
+# the defensive fallback logic must shift from trimming a single phrase to cleanly 
+# isolating and splicing only the first two complete text statements. This ensures the 
+# data satisfies your database schema constraints without dropping the primary evaluation 
+# or crashing on edge cases.
+# ==============================================================================
+
 
 # Prompt Question 2
 
