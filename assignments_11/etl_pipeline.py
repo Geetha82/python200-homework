@@ -66,7 +66,7 @@ def extract() -> list:
             "precipitation_sum": precipitation[i],
             "wind_speed_10m_max": wind_speed[i]
         })
-    print("\nStep 1:  extract task")
+    print("\nStep 1: extract task\n")
     print("Columnar data transformation to row dictionaries complete.")
     
     print(f"Extraction step complete: Processed {len(row_records)} daily records for SFO in 2023.")
@@ -101,7 +101,7 @@ def load_raw(row_records: list):
     upserted_count = len(response.data)
 
     # Print a confirmation with the upserted row count as requested
-    print("\nStep 2: load_raw task")
+    print("\nStep 2: load_raw task\n")
     print(f"Load Raw successful: Upserted {upserted_count} raw rows into weather_raw.")
     logger.info(f"Successfully finished raw storage phase for {upserted_count} entries.")
 
@@ -114,22 +114,26 @@ def transform(raw_records: list) -> list:
     # and prints progress loops every 50 records.
 
     logger = get_run_logger()
-    print("\nStep 3: transform task")
+    print("\nStep 3: transform task\n")
     print("Starting transform step: Querying existing database dates...")
     
     # 1. Incremental Check: Fetch dates already in weather_enriched
-    existing_data = supabase.table("weather_enriched").select("date").execute()
-    existing_dates = {row["date"] for row in existing_data.data}
+    existing_response = supabase.table("weather_enriched").select("date", "good_for_running", "confidence", "llm_summary").execute()
+    existing_records = existing_response.data
+    existing_dates = {row["date"] for row in existing_records}
     
     # Filter out records that already exist
     unprocessed_records = [r for r in raw_records if r["date"] not in existing_dates]
-    
     total_unprocessed = len(unprocessed_records)
+
     print(f"Incremental Check complete: found {total_unprocessed} unprocessed records.")
-    
+
+    # Start complete list with the rows that have already been processed historically
+    complete_enrichment_records = list(existing_records)
+
     if total_unprocessed == 0:
         print("All records already processed. Skipping transformation.")
-        return []
+        return complete_enrichment_records
         
     # 2. Load the saved sklearn Pipeline and Metadata files
     model_path = os.path.join("models", "weather_classifier.pkl")
@@ -162,8 +166,8 @@ def transform(raw_records: list) -> list:
         }])
         
         # Run predict and predict_proba on the unprocessed data row
-        prediction = int(ml_pipeline.predict(feature_df)[0])
-        probabilities = ml_pipeline.predict_proba(feature_df)[0]
+        prediction = int(ml_pipeline.predict(feature_df))
+        probabilities = ml_pipeline.predict_proba(feature_df)
         confidence = float(probabilities[prediction])
         
         verdict_str = "Good for running" if prediction == 1 else "Bad for running"
@@ -214,9 +218,9 @@ def load_enriched(enrichment_records: list):
     # Guards against empty data payloads and idemptotently upserts enriched records 
     # into the weather_enriched Supabase production target table.
     logger = get_run_logger()
-    print("\nStep 4: load_enriched task")
+    print("\nStep 4: load_enriched task\n")
     
-    if not enrichment_records:
+    if not enrichment_records or len(enrichment_records) == 0:
         print("No new enrichment records to load. Database write skipped.")
         return
 
