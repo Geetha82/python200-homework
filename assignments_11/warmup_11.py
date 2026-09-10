@@ -1,5 +1,6 @@
 
-from prefect import task
+
+from prefect import task, get_run_logger
 
 # Prefect Orchestration
 
@@ -71,12 +72,9 @@ def call_api():
 # will never get a chance to run.
 
 # Production Question 3
-from prefect import task, get_run_logger
-
-@task(name="load_enriched_records")
+task(name="load_enriched_records")
 def load_enriched(enrichment_records: list):
-    logger = get_run_logger()
-    logger.info(f"Successfully upserted {len(enrichment_records)} enrichment records.")
+    get_run_logger().info(f"Successfully upserted {len(enrichment_records)} enrichment records.")
 
 # Production Question 4
 # How does the incremental processing check contribute to idempotency?

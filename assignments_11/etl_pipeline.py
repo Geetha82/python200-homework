@@ -20,7 +20,7 @@ openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # extract task
 @task(retries=2, retry_delay_seconds=10)
-def extract_weather_data() -> list:
+def extract() -> list:
     
     # Calls the Open-Meteo historical archive API to fetch 2023 daily weather data 
     # for San Francisco (SFO) using four daily variables. 
@@ -77,7 +77,7 @@ def extract_weather_data() -> list:
 
 # load_raw task
 @task(retries=2, retry_delay_seconds=5)
-def load_raw_data(row_records: list):
+def load_raw(row_records: list):
     # Upserts the raw records into the weather_raw Supabase table 
     # using on_conflict="date" to handle idempotency.
 
@@ -107,7 +107,7 @@ def load_raw_data(row_records: list):
 
 # transform task
 @task(name="double_transform_weather")
-def transform_data(raw_records: list) -> list:
+def transform(raw_records: list) -> list:
 
     # Performs an incremental check against weather_enriched, loads the sklearn pipeline 
     # and feature metadata, runs predictions, calls OpenAI with error fallbacks, 
@@ -145,8 +145,9 @@ def transform_data(raw_records: list) -> list:
         metadata = json.load(f)
     
     # Use the explicit feature names from your metadata JSON file
-    feature_names = metadata.get("features", ["temperature_2m_max", "temperature_2m_min", "precipitation_sum", "wind_speed_10m_max"])
-    
+    feature_list = metadata.get("feature_names")
+    if not feature_list or len(feature_list) < 4:
+        raise KeyError("Could not find a valid 'feature_names' list inside metadata JSON file.")    
     enrichment_records = []
     
     # 3. Process remaining records with progress printing every 50 records
@@ -154,10 +155,10 @@ def transform_data(raw_records: list) -> list:
         
         # Build DataFrame using the exact feature names metadata layout expects
         feature_df = pd.DataFrame([{
-            feature_names[0]: record["temperature_2m_max"],
-            feature_names[1]: record["temperature_2m_min"],
-            feature_names[2]: record["precipitation_sum"],
-            feature_names[3]: record["wind_speed_10m_max"]
+            feature_list[0]: record["temperature_2m_max"],
+            feature_list[1]: record["temperature_2m_min"],
+            feature_list[2]: record["precipitation_sum"],
+            feature_list[3]: record["wind_speed_10m_max"]
         }])
         
         # Run predict and predict_proba on the unprocessed data row
@@ -186,13 +187,14 @@ def transform_data(raw_records: list) -> list:
                 max_tokens=60,
                 temperature=0.7
             )
-            llm_summary = completion.choices.message.content.strip()
+            llm_summary = completion.choices[0].message.content.strip()
+
         except Exception as llm_error:
-            # Handle LLM errors gracefully with a fallback string
+            # Handle LLM errors with a fallback string
             logger.warning(f"LLM API failure encountered on date {record['date']}: {str(llm_error)}")
             llm_summary = f"Weather conditions are predicted to be {verdict_str.lower()} for your run today."
             
-        # Structure payload to match your database columns exactly
+        # Structure payload to match database columns
         enrichment_records.append({
             "date": record["date"],
             "good_for_running": bool(prediction),
@@ -208,13 +210,12 @@ def transform_data(raw_records: list) -> list:
 
 # load_enriched task
 @task(retries=2, retry_delay_seconds=5, name="load_enriched_weather")
-def load_enriched_data(enrichment_records: list):
+def load_enriched(enrichment_records: list):
     # Guards against empty data payloads and idemptotently upserts enriched records 
     # into the weather_enriched Supabase production target table.
     logger = get_run_logger()
     print("\nStep 4: load_enriched task")
     
-    # Guard against an empty list (prints a message and returns early if nothing to load)
     if not enrichment_records:
         print("No new enrichment records to load. Database write skipped.")
         return
@@ -245,16 +246,16 @@ def run_weather_pipeline():
     print("Flow started: Executing pipeline sequential graph...")
 
     # Step 1: Extract data from Open-Meteo
-    raw_records = extract_weather_data()
+    raw_records = extract()
 
     # Step 2: Load raw data into Supabase
-    load_raw_data(raw_records)
+    load_raw(raw_records)
 
     # Step 3: transform task
-    enriched_records = transform_data(raw_records)
+    enriched_records = transform(raw_records)
 
     # Step 4: Load final predictions into weather_enriched
-    load_enriched_data(enriched_records)
+    load_enriched(enriched_records)
 
     print("Flow complete: All executed tasks finished successfully.")
     logger.info("Pipeline lifecycle completed.")
