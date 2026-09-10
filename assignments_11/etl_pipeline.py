@@ -109,18 +109,18 @@ def load_raw(row_records: list):
 @task(name="double_transform_weather")
 def transform(raw_records: list) -> list:
 
-    # Performs an incremental check against weather_enriched, loads the sklearn pipeline 
-    # and feature metadata, runs predictions, calls OpenAI with error fallbacks, 
-    # and prints progress loops every 50 records.
+    # Performs an incremental check against weather_enriched. Processes new rows
+    # through the ML model and OpenAI API, fetches existing rows from Supabase,
+    # and returns the complete list of enrichment records in a normalized structure.
 
     logger = get_run_logger()
     print("\nStep 3: transform task\n")
     print("Starting transform step: Querying existing database dates...")
     
-    # 1. Incremental Check: Fetch dates already in weather_enriched
+    # 1. Fetch dates already in weather_enriched
     existing_response = supabase.table("weather_enriched").select("date", "good_for_running", "confidence", "llm_summary").execute()
-    existing_records = existing_response.data
-    existing_dates = {row["date"] for row in existing_records}
+    existing_raw_data = existing_response.data
+    existing_dates = {row["date"] for row in existing_raw_data}
     
     # Filter out records that already exist
     unprocessed_records = [r for r in raw_records if r["date"] not in existing_dates]
@@ -128,8 +128,15 @@ def transform(raw_records: list) -> list:
 
     print(f"Incremental Check complete: found {total_unprocessed} unprocessed records.")
 
-    # Start complete list with the rows that have already been processed historically
-    complete_enrichment_records = list(existing_records)
+   # Explicitly normalize existing historical rows to guarantee a perfectly consistent structure shape
+    complete_enrichment_records = []
+    for row in existing_raw_data:
+        complete_enrichment_records.append({
+            "date": str(row["date"]),
+            "good_for_running": bool(row["good_for_running"]),
+            "confidence": float(row["confidence"]) if row["confidence"] is not None else 1.0,
+            "llm_summary": str(row["llm_summary"])
+        })
 
     if total_unprocessed == 0:
         print("All records already processed. Skipping transformation.")
@@ -157,13 +164,23 @@ def transform(raw_records: list) -> list:
     # 3. Process remaining records with progress printing every 50 records
     for index, record in enumerate(unprocessed_records, start=1):
         
-        # Build DataFrame using the exact feature names metadata layout expects
-        feature_df = pd.DataFrame([{
-            feature_list[0]: record["temperature_2m_max"],
-            feature_list[1]: record["temperature_2m_min"],
-            feature_list[2]: record["precipitation_sum"],
-            feature_list[3]: record["wind_speed_10m_max"]
-        }])
+       # Map features safely by exact string name matches instead of index order
+        feature_dict = {}
+        for feature_name in feature_list:
+            # Map input names directly to your JSON's string features safely
+            if "temperature_2m_max" in feature_name:
+                feature_dict[feature_name] = record["temperature_2m_max"]
+            elif "temperature_2m_min" in feature_name:
+                feature_dict[feature_name] = record["temperature_2m_min"]
+            elif "precipitation_sum" in feature_name:
+                feature_dict[feature_name] = record["precipitation_sum"]
+            elif "wind_speed_10m_max" in feature_name:
+                feature_dict[feature_name] = record["wind_speed_10m_max"]
+            else:
+                feature_dict[feature_name] = record.get(feature_name, 0.0)
+
+        # Build DataFrame directly from our reliably mapped feature dictionary
+        feature_df = pd.DataFrame([feature_dict])
         
         # Run predict and predict_proba on the unprocessed data row
         prediction = int(ml_pipeline.predict(feature_df))
