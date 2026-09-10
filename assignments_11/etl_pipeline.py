@@ -184,7 +184,7 @@ def transform(raw_records: list) -> list:
         
         # Run predict and predict_proba on the unprocessed data row
         prediction = int(ml_pipeline.predict(feature_df))
-        probabilities = ml_pipeline.predict_proba(feature_df)
+        probabilities = ml_pipeline.predict_proba(feature_df)[0]
         confidence = float(probabilities[prediction])
         
         verdict_str = "Good for running" if prediction == 1 else "Bad for running"
