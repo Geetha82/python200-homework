@@ -1,93 +1,102 @@
-
+# warmup_11.py
 
 from prefect import task, get_run_logger
 
-# Prefect Orchestration
+# PREFECT ORCHESTRATION
 
-# Prefect Question 1
+# --- Prefect Question 1 ---
 
 # What is the difference between a @flow and a @task?
-# * A @flow is like the manager. It controls the whole pipeline, decides the order 
-#   of steps, and brings everything together.
-# * A @task is like the worker. It is a single, small step inside the flow that 
-#   does one specific job (like loading data from an API or saving to a database).
+# * A @flow is the high-level manager that controls the overall pipeline, orchestrates 
+#   the execution sequence, manages parameters, and links steps together.
+# * A @task is a single, discrete unit of work inside a flow that handles a specific 
+#   isolated job (like extraction, database manipulation, or transformations).
 
 # Would you decorate a simple Celsius-to-Fahrenheit function with @task?
 # No, I would not. 
 
-# Prefect tracks every single @task, creates logs for it, and checks its status. 
-# This adds a tiny bit of extra work and slowdown for your computer. For a super quick, 
-# simple math problem with no internet or database work, you do not need that extra tracking. 
-# It is better to leave it as a regular Python function so it runs instantly.
+# Prefect tracks every single @task, captures metadata, and logs its state to the server. 
+# This process introduces overhead that slows down local processing. For a quick, in-memory 
+# mathematical utility calculation with zero network or disk I/O, it is better to leave it 
+# as a standard Python function so it executes instantly without extra tracking.
 
-# Prefect Question 2
 
+# --- Prefect Question 2 ---
 @task(name="call_api", retries=3, retry_delay_seconds=30)
 def call_api():
     pass
 
-# Prefect Question 3
+# --- Prefect Question 3 ---
 
 # Where in the UI do you look to see what went wrong?
-
-# I  would click on the name of the specific failed flow run in the Prefect dashboard.
-# Then, I would look at the "Logs" tab or click directly on the failed "transform" task box in the graph.
+# * I would navigate to the Flow Runs tab on the Prefect UI, select the failed run instance, 
+#   and look directly at the unified "Logs" stream tab.
+# * Alternatively, I would go to the task run graph or grid view and click directly on the 
+#   red "transform" task block to isolate its logs.
 
 # What specific information would you expect to find there?
-
-# * I expect to find the specific Python Error Message and the full Stack Trace 
-#   (the lines of code showing exactly where the crash happened).
-# * I would also see the Log Level messages (like ERROR or CRITICAL) showing the 
-#   inputs or variables used right before the task crashed (for example, a network 
-#   timeout or a missing key in the data).
+# * I would look for the detailed Python Exception type, error message, and a full 
+#   traceback showing the exact file and line number where the code crashed.
+# * I would also check any surrounding context logs (like input payload keys or missing parameters) 
+#   written just before the task changed its state to Failed.
 
 
-# Production Patterns
+# PRODUCTION PATTERNS
 
-# Production Question 1
+# --- Production Question 1 ---
+
 # What does raise_for_status() do?
-# It tells the code to stop immediately if the website or API sends back an error code (like an HTTP 500 error). 
-# It raises an official Python error to stop the script.
+# It is a built-in requests utility that explicitly checks the HTTP status code of an 
+# outbound request response. If the server responds with a 4xx or 5xx error code, it raises 
+# a clean HTTPError exception on the spot.
 
 # Why is it better than a print("error") statement?
-# If print("error") is used, the code keeps running blindly even though it has no data. 
-# If raise_for_status()is used, Prefect knows the step failed and will stop the script or 
-# try running it again.
+# Using print("error") handles the issue visually but leaves the pipeline script running. 
+# The task finishes as "Completed" passing broken, empty data down the chain. Using 
+# raise_for_status() triggers a real exception that signals Prefect that the task explicitly 
+# failed, halting the pipeline or initiating retries.
 
 # What happens to downstream tasks when a 500 error hits?
-# * With print("error"): The task passes empty or broken data to the next steps. 
-#   The later steps will crash anyway with ugly errors like "KeyError".
-# * With raise_for_status(): The pipeline halts instantly. The later steps are cleanly 
-#   canceled by Prefect before they can break or cause damage.
+# * With print("error"): The task completes anyway. The empty or invalid data is passed 
+#   downstream, causing subsequent tasks (like transform) to crash ungracefully with 
+#   unrelated errors like KeyError or TypeError.
+# * With raise_for_status(): The task crashes immediately. Prefect handles the exception, 
+#   cancels all downstream tasks gracefully before they run with bad data, and flags the 
+#   run as Failed.
 
-# Production Question 2
+# --- Production Question 2 ---
+
 # What does upsert protect you from in this scenario?
-# It saves you from duplicate data errors. Because "load_raw" already ran before the crash, 
-# those rows are already in your database. When you restart the script, upsert sees the 
-# same "date" and simply updates the existing row instead of making a duplicate.
+# It protects you from database constraint errors and duplicate data generation on restarts. 
+# Since the "extract" and "load_raw" steps already successfully loaded the rows to Supabase before 
+# the transform crash, those entries exist in the database. When you restart the pipeline, 
+# upsert matches the existing "date" keys and updates them safely without failing.
 
 # What would happen if you used a plain insert instead?
-# The database will reject the data and throw a primary key error because that "date" already 
-# exists. The pipeline will crash at the "load_raw" step, and your fixed "transform" code 
-# will never get a chance to run.
+# The pipeline would crash at the "load_raw" task on the second run. The database would check 
+# the "date" column, find that those unique keys already exist, and throw a Unique Constraint 
+# Violation error. This prevents your corrected transform task from ever executing.
 
-# Production Question 3
-task(name="load_enriched_records")
+
+# --- Production Question 3 ---
+@task(name="load_enriched_records")
 def load_enriched(enrichment_records: list):
     get_run_logger().info(f"Successfully upserted {len(enrichment_records)} enrichment records.")
 
-# Production Question 4
+# --- Production Question 4 ---
+
 # How does the incremental processing check contribute to idempotency?
-# An incremental check ensures your pipeline only processes *new* or *updated* rows 
-# instead of re-running everything from scratch. It checks what dates are already inside 
-# your database and skips them. This ensures that no matter how many times you run the 
-# pipeline, it only does the actual transformation work for a day once.
+# An incremental check ensures that your pipeline verifies what data has already been fully 
+# processed by looking up historical keys before committing computing cycles. By filtering 
+# out active matches, it guarantees that re-running the pipeline multiple times processes 
+# new rows exactly once, resulting in a safe data state.
 
 # What are the practical consequences of removing it?
-# 1. Cost: You would have to pay for OpenAI API tokens to re-generate LLM text for all 
-#    365 days every single day. Your API bill would skyrocket unnecessarily.
-# 2. Time: LLM API requests are slow. Waiting for 365 separate text generations every 
-#    day would make a pipeline that should take 5 seconds take several minutes to finish.
-# 3. Data Correctness: Since LLMs are creative, re-running them would overwrite your 
-#    old, existing recommendations with brand new sentences every day. Your historical 
-#    data would constantly shift instead of staying permanent and reliable.
+# 1. Cost: You would submit all 365 weather records to the OpenAI API on every execution, 
+#    creating high token consumption costs and bloated utility bills.
+# 2. Time: Making 365 separate external HTTP network requests to a generative LLM endpoint 
+#    sequentially is slow. A pipeline that should take seconds will stall for minutes.
+# 3. Data Correctness: Since LLM model outputs are inherently creative and non-deterministic, 
+#    re-running them over the same history would overwrite old text with brand-new sentences, 
+#    ruining historical data consistency.
+
