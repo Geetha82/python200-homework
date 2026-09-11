@@ -23,17 +23,11 @@ openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # extract task
 @task(retries=2, retry_delay_seconds=10)
 def extract() -> list:
-    
-    # Calls the Open-Meteo historical archive API to fetch 2023 daily weather data 
-    # for San Francisco (SFO) using four daily variables. 
-    # Converts the columnar response into a list of row dictionaries.
 
     logger = get_run_logger()
     logger.info("Starting historical extraction for San Francisco (SFO)...")
-    print("Initiating connection to Open-Meteo Historical Archive API...")
     
     # San Francisco (SFO) Coordinates: Latitude 37.7749, Longitude -122.4194
-    # Fetching all 365 days of 2023 with 4 daily parameters
     url = (
         "https://archive-api.open-meteo.com/v1/archive"
         "?latitude=37.7749&longitude=-122.4194"
@@ -43,10 +37,8 @@ def extract() -> list:
     )
     
     response = requests.get(url)
-    
-    # Clean error propagation for any server or connection bugs
     response.raise_for_status()
-    print("API data successfully fetched from server.")
+ 
     
     api_data = response.json()
     daily = api_data.get("daily", {})
@@ -68,6 +60,7 @@ def extract() -> list:
             "precipitation_sum": precipitation[i],
             "wind_speed_10m_max": wind_speed[i]
         })
+
     print("\n Step 1: extract task \n")
     print("Columnar data transformation to row dictionaries complete.")
     
@@ -80,12 +73,9 @@ def extract() -> list:
 # load_raw task
 @task(retries=2, retry_delay_seconds=5)
 def load_raw(row_records: list):
-    # Upserts the raw records into the weather_raw Supabase table 
-    # using on_conflict="date" to handle idempotency.
 
     logger = get_run_logger()
     logger.info(f"Preparing to load {len(row_records)} raw records into Supabase...")
-    print("Connecting to Supabase instance for data staging...")
 
     if not row_records:
         print("No raw records provided to upsert.")
@@ -93,10 +83,8 @@ def load_raw(row_records: list):
 
     # Execute the upsert query using your global 'supabase' variable
     response = (
-        supabase.table("weather_raw").upsert(row_records, on_conflict="date")
-        .execute()
+        supabase.table("weather_raw").upsert(row_records, on_conflict="date").execute()
     )
-    print("Database upsert statement executed safely.")
 
     # Extract the number of records actually handled by the operation
     upserted_count = len(row_records)
@@ -110,13 +98,8 @@ def load_raw(row_records: list):
 @task(name="transform")
 def transform(raw_records: list) -> list:
 
-    # Performs an incremental check against weather_enriched. Processes new rows
-    # through the ML model and OpenAI API, fetches existing rows from Supabase,
-    # and returns the complete list of enrichment records in a normalized structure.
-
     logger = get_run_logger()
     print("\nStep 3: transform task\n")
-    print("Starting transform step: Querying existing database dates...")
     
     # 1. Fetch dates already in weather_enriched
     existing_response = supabase.table("weather_enriched").select("date", "good_for_running", "confidence", "llm_summary").execute()
@@ -126,8 +109,6 @@ def transform(raw_records: list) -> list:
     # Filter out records that already exist
     unprocessed_records = [r for r in raw_records if r["date"] not in existing_dates]
     total_unprocessed = len(unprocessed_records)
-
-    print(f"Incremental Check complete: found {total_unprocessed} unprocessed records.")
 
    # Explicitly normalize existing historical rows to guarantee a perfectly consistent structure shape
     complete_enrichment_records = []
@@ -150,7 +131,6 @@ def transform(raw_records: list) -> list:
     if not os.path.exists(model_path) or not os.path.exists(metadata_path):
         raise FileNotFoundError("Missing your model files inside the models/ directory!")
         
-    print("Loading sklearn Pipeline and feature layout metadata...")
     ml_pipeline = joblib.load(model_path)
     
     with open(metadata_path, "r") as f:
@@ -227,7 +207,9 @@ def transform(raw_records: list) -> list:
         # Print progress loop every 50 records as requested
         if index % 50 == 0 or index == total_unprocessed:
             print(f"Transformation Progress Check: Processed {index}/{total_unprocessed} records...")  
-    print(f"Transform task successfully finished: Generated {len(enrichment_records)} enriched records.")
+   
+    print(f"Transform task successfully finished: Processed {total_unprocessed} new enriched records. Total complete set: {len(complete_enrichment_records)}.")
+
     return  complete_enrichment_records
 
 # load_enriched task
