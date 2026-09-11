@@ -1,3 +1,5 @@
+# Video link - https://youtu.be/pgyUJXDMHk4
+
 import os
 import json
 import joblib
@@ -66,7 +68,7 @@ def extract() -> list:
             "precipitation_sum": precipitation[i],
             "wind_speed_10m_max": wind_speed[i]
         })
-    print("\nStep 1: extract task\n")
+    print("\n Step 1: extract task \n")
     print("Columnar data transformation to row dictionaries complete.")
     
     print(f"Extraction step complete: Processed {len(row_records)} daily records for SFO in 2023.")
