@@ -108,7 +108,7 @@ def load_raw(row_records: list):
     logger.info(f"Successfully finished raw storage phase for {upserted_count} entries.")
 
 # transform task
-@task(name="double_transform_weather")
+@task(name="transform")
 def transform(raw_records: list) -> list:
 
     # Performs an incremental check against weather_enriched. Processes new rows
@@ -232,7 +232,7 @@ def transform(raw_records: list) -> list:
     return enrichment_records
 
 # load_enriched task
-@task(retries=2, retry_delay_seconds=5, name="load_enriched_weather")
+@task(retries=2, retry_delay_seconds=5, name="load_enriched")
 def load_enriched(enrichment_records: list):
     # Guards against empty data payloads and idemptotently upserts enriched records 
     # into the weather_enriched Supabase production target table.
