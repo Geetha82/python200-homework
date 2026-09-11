@@ -93,14 +93,13 @@ def load_raw(row_records: list):
 
     # Execute the upsert query using your global 'supabase' variable
     response = (
-        supabase.table("weather_raw")
-        .upsert(row_records, on_conflict="date")
+        supabase.table("weather_raw").upsert(row_records, on_conflict="date")
         .execute()
     )
     print("Database upsert statement executed safely.")
 
     # Extract the number of records actually handled by the operation
-    upserted_count = len(response.data)
+    upserted_count = len(row_records)
 
     # Print a confirmation with the upserted row count as requested
     print("\nStep 2: load_raw task\n")
@@ -218,7 +217,7 @@ def transform(raw_records: list) -> list:
             llm_summary = f"Weather conditions are predicted to be {verdict_str.lower()} for your run today."
             
         # Structure payload to match database columns
-        enrichment_records.append({
+        complete_enrichment_records.append({
             "date": record["date"],
             "good_for_running": bool(prediction),
             "confidence": confidence,
@@ -229,7 +228,7 @@ def transform(raw_records: list) -> list:
         if index % 50 == 0 or index == total_unprocessed:
             print(f"Transformation Progress Check: Processed {index}/{total_unprocessed} records...")  
     print(f"Transform task successfully finished: Generated {len(enrichment_records)} enriched records.")
-    return enrichment_records
+    return  complete_enrichment_records
 
 # load_enriched task
 @task(retries=2, retry_delay_seconds=5, name="load_enriched")
@@ -239,20 +238,18 @@ def load_enriched(enrichment_records: list):
     logger = get_run_logger()
     print("\nStep 4: load_enriched task\n")
     
-    if not enrichment_records or len(enrichment_records) == 0:
-        print("No new enrichment records to load. Database write skipped.")
+    if not enrichment_records:
+        print("No enrichment records to load. Database write skipped.")
         return
 
     print(f"Connecting to database to push {len(enrichment_records)} predictions into weather_enriched...")
     
-    # Upserts enrichment records into weather_enriched using on_conflict="date"
     response = (
         supabase.table("weather_enriched")
         .upsert(enrichment_records, on_conflict="date")
         .execute()
     )
-    
-    upserted_count = len(response.data)
+    upserted_count = len(enrichment_records) 
     
     # Prints a confirmation with the upserted row count
     print(f"Load Enriched successful: Upserted {upserted_count} enrichment records into weather_enriched.")
